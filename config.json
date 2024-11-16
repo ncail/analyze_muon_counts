@@ -1,0 +1,15 @@
+{
+  "data": {
+    "filepath": "data_files/data_log_20241004_120111 - Copy.csv"
+  },
+
+  "output": {
+    "path": "results",
+    "filename": "run_1_log_1014"
+  },
+
+  "processing": {
+    "time_interval": 600,
+    "welch_segment_length": 256
+  }
+}
