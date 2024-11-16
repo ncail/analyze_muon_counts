@@ -142,13 +142,13 @@ def main(args):
 
     # Draw vertical lines at x-axis indices with frequency value in per hours.
     frequency_grid_lines = np.arange(0, max(frequencies_welch) + max(frequencies_welch)/5, max(frequencies_welch)/5)
+    ymin, ymax = min(power_density), max(power_density)
+    middle_log = (np.log10(ymin) + np.log10(ymax)) / 2
+    middle_y = 10 ** middle_log
     for frequency in frequency_grid_lines:
         if frequency != 0:
             time_in_hours = (1 / frequency) / 3600  # Hours conversion.
             plt.axvline(x=frequency, color='k', linestyle='--')
-            ymin, ymax = min(power_density), max(power_density)
-            middle_log = (np.log10(ymin) + np.log10(ymax)) / 2
-            middle_y = 10 ** middle_log
             plt.text(frequency, middle_y, f'{round(time_in_hours, 2)} hours', ha='right', va='bottom')
 
     # Draw and label frequency of max power in per hours.
@@ -157,7 +157,6 @@ def main(args):
     max_power_freq_in_hours = (1 / max_power_frequency) / 3600
     plt.axvline(x=max_power_frequency, color='m', linestyle='--',
                 label=f'Maximum power: {round(max_power_freq_in_hours, 2)}-hour frequency')
-    # plt.text(max_power_frequency, 1.7e6, f'{round(max_power_freq_in_hours, 2)} hours', ha='right', va='bottom')
 
     plt.title("Power Spectral Density of Detrended Muon Counts")
     plt.xlabel("Frequency (Hz)")
