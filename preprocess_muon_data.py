@@ -4,9 +4,9 @@ import pandas as pd
 
 ''' ************************************************ Config ************************************************ '''
 data_filepath = ('C:\\data\\project_of_excellence\\muon_project_programs\\data_files\\data_from_onedrive'
-                 '/data_log_20241004_120111.csv')
-resampling_time_interval = timedelta(minutes=6)
-output_path = f'preprocessed_data/preprocessed_6M-intervals_20241004_120111.csv'
+                 '/data_log_20241004_120111_manually_trimmed.csv')
+resampling_time_interval = timedelta(minutes=60)
+output_path = f'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
 
 ''' ********************************************* Processing *********************************************** '''
 # Read file into dataframe. File should be muon detector CSV file.
@@ -35,6 +35,9 @@ time_avgd_series = df[count_col].resample(resampling_time_interval).apply(
 
 # Has Time_stamp and Count columns
 time_avgd_df = time_avgd_series.reset_index().rename(columns={count_col: 'Count'})
+
+# Drop last count.
+time_avgd_df.drop(time_avgd_df.index[-1], inplace=True)
 
 # Write to csv.
 time_avgd_df.to_csv(f'{output_path}', index=False)
