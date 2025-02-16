@@ -5,26 +5,26 @@ import pandas as pd
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.fft import rfft, rfftfreq
-import matplotlib.pyplot as plt
 import pywt
+import matplotlib.pyplot as plt
 
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 0
+mode = 1
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/preprocessed_1M-intervals_20241004_120111_manually_trimmed.csv'
+data_filepath = 'preprocessed_data/preprocessed_10S-intervals_20241004_120111_manually_trimmed.csv'
 
 # Config signal smoothing.
-gaussian_smoothing_sigma = 0
+gaussian_smoothing_sigma = 6
 
 # Config fft post-processing.
-low_pass_filter = 0  # Cutoff frequency.
+low_pass_filter = 1/1800  # Cutoff frequency.
 
 ''' *************************************** PROCESSING ****************************************** '''
 # Get timestamp for filenames.
-current_timestamp = datetime.datetime.now().strftime('%HH%MM%SS_%mm%dd%YYYY')
+current_timestamp = datetime.datetime.now().strftime('%H%M%S_%m%d%Y')
 
 # Read file into dataframe. File should be muon detector CSV file.
 df = pd.read_csv(data_filepath, parse_dates=[0])
@@ -56,7 +56,12 @@ time_interval = df.loc[1, timestamp_col] - df.loc[0, timestamp_col]  # Assumes d
 frequencies_domain = rfftfreq(n, d=int(time_interval.total_seconds()))
 
 if low_pass_filter:
-    fft_values_detrended[frequencies_domain > low_pass_filter] = 0
+    # Find the first index where frequency is greater than low_pass_filter.
+    idx = np.searchsorted(frequencies_domain, low_pass_filter, side='right')
+
+    # Keep one more than the nearest value.
+    frequencies_domain = frequencies_domain[:idx]
+    fft_values_detrended = fft_values_detrended[:idx]
 
 # Get magnitudes of frequency components: shows the strength of each frequency component.
 # magnitudes_raw = np.abs(fft_values_raw)
@@ -67,8 +72,8 @@ max_mag_pos = magnitudes_detrended.argmax()
 max_mag_frequency = frequencies_domain[max_mag_pos]
 
 # Wavelet analysis.
-scales = np.arange(1, len(df[count_col])/2)
-coeffs, frequencies_wt = pywt.cwt(df[count_col], scales, 'cmor')
+#scales = np.arange(1, len(event_counts_detrended)/2)
+#coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor')
 
 ''' **************************************** PLOT RESULTS *************************************** '''
 # Get timestamps for plotting raw data and wavelet transform.
@@ -81,10 +86,10 @@ if mode == 0:
     # Plot mean value (background level).
     plt.plot(time_series, event_counts_raw, label="Data")
     plt.plot(time_series, np.full(len(time_series), background_level), color="red", label="Average")
-    plt.suptitle("Raw event counts")
+    plt.suptitle("Detector event counts")
     plt.xlabel("Time")
     plt.xticks(rotation=45)
-    plt.ylabel(f"Event counts (per {int(time_interval.total_seconds())} sec)")
+    plt.ylabel(f"Counts (per {int(time_interval.total_seconds())} sec)")
     plt.legend()
     plt.grid(True)
 
@@ -106,11 +111,14 @@ if mode == 1:
     plt.axvline(x=max_mag_frequency, color='m', linestyle='--',
                 label=f'Maximum magnitude: {round(max_mag_freq_in_hours, 2)}-hour frequency')
 
-    plt.title("FFT of Detrended Data")
+    plt.suptitle("FFT of Detrended Data")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Magnitude")
     plt.legend()
     plt.grid(True)
+
+    if low_pass_filter:
+        plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz")
 
     plt.savefig(f'results/{current_timestamp}_fft_plot.png')
 
@@ -140,7 +148,7 @@ if mode == 2:
 log_configs = {
     "mode [raw data, fft, wavelet]": mode,
     "data filepath": data_filepath,
-    "sampling interval": time_interval,
+    "sampling interval": str(time_interval),
     "gaussian smoothing sigma parameter": gaussian_smoothing_sigma,
     "low pass filter cutoff frequency": low_pass_filter
 }
