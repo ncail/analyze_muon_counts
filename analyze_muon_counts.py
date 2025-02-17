@@ -76,7 +76,7 @@ max_mag_frequency = frequencies_domain[max_mag_pos]
 # Wavelet analysis.
 scales = np.arange(1, len(event_counts_detrended)/2)
 if mode == 2:
-    coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor')
+    coeffs, _ = pywt.cwt(event_counts_detrended, scales, 'cmor')
 
 ''' **************************************** PLOT RESULTS *************************************** '''
 # Get timestamps for plotting raw data and wavelet transform.
@@ -134,18 +134,19 @@ if mode == 2:
     morlet_const = 0.849
 
     # Convert scales to frequency.
-    # wavelet_freqs = morlet_const / scales
+    # wavelet_freqs = morlet_const / (scales * time_interval.total_seconds())
+    frequencies_wt = morlet_const/scales
 
     # Plot cone of influence.
     coi = morlet_const * scales
-    coi_freq = 1/coi
 
     # Convert COI values to actual time indices.
     # COI is in terms of the scale, so for each scale, we compute the start and end of the cone.
     coi_start = time_series[0] + coi*time_interval  # Start of COI at each scale.
     coi_end = time_series[-1] - coi*time_interval  # End of COI at each scale.
 
-    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), coi_freq.max(), coi_freq.min()])
+    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), scales.max(),
+                                                   scales.min()])
     plt.colorbar(label='Power')
     plt.xlabel("Time")
     plt.xticks(rotation=45)
@@ -153,8 +154,8 @@ if mode == 2:
     plt.title("Wavelet Transform of Muon Counts")
 
     # Plot COI.
-    plt.plot(coi_start, coi_freq, 'w--', label='COI')
-    plt.plot(coi_end, coi_freq, 'w--')
+    plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
+    plt.plot(coi_end, frequencies_wt, 'w--')
 
     plt.savefig(f'results/{current_timestamp}_wavelet_plot.png')
 
