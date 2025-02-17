@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 2
+mode = 0
 
 # Get input and output paths.
 data_filepath = 'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
@@ -89,6 +89,7 @@ time_series = df[timestamp_col].tolist()
 # To identify transient events, which may correspond to solar flares, etc.
 if mode == 0:
     # Plot mean value (background level).
+    plt.figure(figsize=(10, 6))
     plt.plot(time_series, event_counts_raw, label="Data")
     plt.plot(time_series, np.full(len(time_series), background_level), color="red", label="Average")
     plt.suptitle("Detector event counts")
@@ -101,7 +102,7 @@ if mode == 0:
     if gaussian_smoothing_sigma:
         plt.title(f'Gaussian-smoothed: sigma={gaussian_smoothing_sigma}')
 
-    plt.savefig(f'results/{current_timestamp}_raw_data_plot.png')
+    plt.savefig(f'results/{current_timestamp}_raw_data_plot.png', bbox_inches='tight')
 
     plt.show()
 # Plot raw data end.
@@ -109,6 +110,7 @@ if mode == 0:
 
 # Plot ffts start.
 if mode == 1:
+    plt.figure(figsize=(10, 6))
     plt.plot(frequencies_domain, magnitudes_detrended, color='orange')
 
     # Draw and label frequency of max power in per hours.
@@ -124,7 +126,7 @@ if mode == 1:
     if low_pass_filter:
         plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz")
 
-    plt.savefig(f'results/{current_timestamp}_fft_plot.png')
+    plt.savefig(f'results/{current_timestamp}_fft_plot.png', bbox_inches='tight')
 
     plt.show()
 # Plot ffts end.
@@ -134,10 +136,6 @@ if mode == 1:
 if mode == 2:
     morlet_const = 0.849
 
-    # Convert scales to frequency.
-    # wavelet_freqs = morlet_const / (scales * time_interval.total_seconds())
-    # frequencies_wt = pywt.scale2frequency('cmor', scales) / time_interval.total_seconds()
-
     # Plot cone of influence.
     coi = morlet_const * scales
 
@@ -146,7 +144,7 @@ if mode == 2:
     coi_start = time_series[0] + pd.to_timedelta(coi * time_interval, unit='s')  # Start of COI at each scale.
     coi_end = time_series[-1] - pd.to_timedelta(coi * time_interval, unit='s')  # End of COI at each scale.
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 6))
     pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
     ax.set_xlabel("Date Time")
     ax.set_ylabel("Frequency (Hz)")
@@ -156,19 +154,11 @@ if mode == 2:
     plt.axhline(y=max_mag_frequency, color='m', linestyle='--',
                 label=f'Maximum magnitude from FFT: {round(max_mag_freq_in_hours, 2)}-hour frequency')
 
-    # plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), frequencies_wt.max(),
-    #                                                frequencies_wt.min()])
-    # plt.colorbar(label='Power')
-    # plt.xlabel("Time")
-    # plt.xticks(rotation=45)
-    # plt.ylabel(f"Frequency (Hz)")  # Frequency (1/{int(time_interval.total_seconds())} Hz)
-    # plt.title("Wavelet Transform of Muon Counts")
-
     # Plot COI.
     plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
     plt.plot(coi_end, frequencies_wt, 'w--')
 
-    plt.savefig(f'results/{current_timestamp}_wavelet_plot.png')
+    plt.savefig(f'results/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
 
     plt.legend()
     plt.show()
