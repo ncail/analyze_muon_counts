@@ -133,24 +133,26 @@ if mode == 1:
 if mode == 2:
     morlet_const = 0.849
 
+    # periods = scales * time_interval.total_seconds() / morlet_const  # Seconds. morlet_const = 1
+
     # Convert scales to frequency.
     # wavelet_freqs = morlet_const / (scales * time_interval.total_seconds())
-    frequencies_wt = morlet_const/scales
+    frequencies_wt = pywt.scale2frequency('cmor', scales) / time_interval.total_seconds()
 
     # Plot cone of influence.
     coi = morlet_const * scales
 
     # Convert COI values to actual time indices.
     # COI is in terms of the scale, so for each scale, we compute the start and end of the cone.
-    coi_start = time_series[0] + coi*time_interval  # Start of COI at each scale.
-    coi_end = time_series[-1] - coi*time_interval  # End of COI at each scale.
+    coi_start = time_series[0] + pd.to_timedelta(coi * time_interval, unit='s')  # Start of COI at each scale.
+    coi_end = time_series[-1] - pd.to_timedelta(coi * time_interval, unit='s')  # End of COI at each scale.
 
-    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), scales.max(),
-                                                   scales.min()])
+    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), frequencies_wt.max(),
+                                                   frequencies_wt.min()])
     plt.colorbar(label='Power')
     plt.xlabel("Time")
     plt.xticks(rotation=45)
-    plt.ylabel(f"Frequency (1/{int(time_interval.total_seconds())} Hz)")
+    plt.ylabel(f"Period (s)")  # Frequency (1/{int(time_interval.total_seconds())} Hz)
     plt.title("Wavelet Transform of Muon Counts")
 
     # Plot COI.
