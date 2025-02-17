@@ -76,7 +76,8 @@ max_mag_frequency = frequencies_domain[max_mag_pos]
 # Wavelet analysis.
 scales = np.arange(1, len(event_counts_detrended)/2)
 if mode == 2:
-    coeffs, _ = pywt.cwt(event_counts_detrended, scales, 'cmor')
+    coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor',
+                                      sampling_period=time_interval.total_seconds())
 
 ''' **************************************** PLOT RESULTS *************************************** '''
 # Get timestamps for plotting raw data and wavelet transform.
@@ -133,11 +134,9 @@ if mode == 1:
 if mode == 2:
     morlet_const = 0.849
 
-    # periods = scales * time_interval.total_seconds() / morlet_const  # Seconds. morlet_const = 1
-
     # Convert scales to frequency.
     # wavelet_freqs = morlet_const / (scales * time_interval.total_seconds())
-    frequencies_wt = pywt.scale2frequency('cmor', scales) / time_interval.total_seconds()
+    # frequencies_wt = pywt.scale2frequency('cmor', scales) / time_interval.total_seconds()
 
     # Plot cone of influence.
     coi = morlet_const * scales
@@ -147,13 +146,20 @@ if mode == 2:
     coi_start = time_series[0] + pd.to_timedelta(coi * time_interval, unit='s')  # Start of COI at each scale.
     coi_end = time_series[-1] - pd.to_timedelta(coi * time_interval, unit='s')  # End of COI at each scale.
 
-    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), frequencies_wt.max(),
-                                                   frequencies_wt.min()])
-    plt.colorbar(label='Power')
-    plt.xlabel("Time")
-    plt.xticks(rotation=45)
-    plt.ylabel(f"Period (s)")  # Frequency (1/{int(time_interval.total_seconds())} Hz)
-    plt.title("Wavelet Transform of Muon Counts")
+    fig, ax = plt.subplots()
+    pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
+    ax.set_xlabel("Date Time")
+    ax.set_ylabel("Frequency (Hz)")
+    ax.set_title("Muon Count Wavelet Transform")
+    fig.colorbar(pcm, ax=ax)
+
+    # plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), frequencies_wt.max(),
+    #                                                frequencies_wt.min()])
+    # plt.colorbar(label='Power')
+    # plt.xlabel("Time")
+    # plt.xticks(rotation=45)
+    # plt.ylabel(f"Frequency (Hz)")  # Frequency (1/{int(time_interval.total_seconds())} Hz)
+    # plt.title("Wavelet Transform of Muon Counts")
 
     # Plot COI.
     plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
