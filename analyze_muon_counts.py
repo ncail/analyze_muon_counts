@@ -11,16 +11,16 @@ import matplotlib.pyplot as plt
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 1
+mode = 2
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/preprocessed_10S-intervals_20241004_120111_manually_trimmed.csv'
+data_filepath = 'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
 
 # Config signal smoothing.
-gaussian_smoothing_sigma = 6
+gaussian_smoothing_sigma = 3
 
 # Config fft post-processing.
-low_pass_filter = 1/1800  # Cutoff frequency.
+low_pass_filter = 1/3600  # Cutoff frequency.
 
 ''' *************************************** PROCESSING ****************************************** '''
 # Get timestamp for filenames.
@@ -40,6 +40,7 @@ event_counts_raw = df[count_col]
 
 if gaussian_smoothing_sigma:
     event_counts_raw = gaussian_filter1d(event_counts_raw, sigma=gaussian_smoothing_sigma)
+# End if.
 
 # Remove expected constant signal/background noise.
 background_level = np.mean(event_counts_raw)
@@ -62,6 +63,7 @@ if low_pass_filter:
     # Keep one more than the nearest value.
     frequencies_domain = frequencies_domain[:idx]
     fft_values_detrended = fft_values_detrended[:idx]
+# End if.
 
 # Get magnitudes of frequency components: shows the strength of each frequency component.
 # magnitudes_raw = np.abs(fft_values_raw)
@@ -72,8 +74,9 @@ max_mag_pos = magnitudes_detrended.argmax()
 max_mag_frequency = frequencies_domain[max_mag_pos]
 
 # Wavelet analysis.
-#scales = np.arange(1, len(event_counts_detrended)/2)
-#coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor')
+scales = np.arange(1, len(event_counts_detrended)/2)
+if mode == 2:
+    coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor')
 
 ''' **************************************** PLOT RESULTS *************************************** '''
 # Get timestamps for plotting raw data and wavelet transform.
@@ -128,15 +131,30 @@ if mode == 1:
 
 # Plot wavelet transform start.
 if mode == 2:
+    morlet_const = 0.849
+
+    # Convert scales to frequency.
+    # wavelet_freqs = morlet_const / scales
+
     # Plot cone of influence.
+    coi = morlet_const * scales
+    coi_freq = 1/coi
 
-    # Convert scales to periods in hours.
+    # Convert COI values to actual time indices.
+    # COI is in terms of the scale, so for each scale, we compute the start and end of the cone.
+    coi_start = time_series[0] + coi*time_interval  # Start of COI at each scale.
+    coi_end = time_series[-1] - coi*time_interval  # End of COI at each scale.
 
-    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), scales.max(), scales.min()])
+    plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), coi_freq.max(), coi_freq.min()])
     plt.colorbar(label='Power')
     plt.xlabel("Time")
-    plt.ylabel("Scale")
+    plt.xticks(rotation=45)
+    plt.ylabel(f"Frequency (1/{int(time_interval.total_seconds())} Hz)")
     plt.title("Wavelet Transform of Muon Counts")
+
+    # Plot COI.
+    plt.plot(coi_start, coi_freq, 'w--', label='COI')
+    plt.plot(coi_end, coi_freq, 'w--')
 
     plt.savefig(f'results/{current_timestamp}_wavelet_plot.png')
 
@@ -144,13 +162,15 @@ if mode == 2:
 # Plot wavelet transform end.
 
 
+''' ***************************************** LOG CONFIGS *************************************** '''
 # Log current configs, write to file.
 log_configs = {
     "mode [raw data, fft, wavelet]": mode,
     "data filepath": data_filepath,
     "sampling interval": str(time_interval),
     "gaussian smoothing sigma parameter": gaussian_smoothing_sigma,
-    "low pass filter cutoff frequency": low_pass_filter
+    "low pass filter cutoff frequency": f'1/{int(1/low_pass_filter)}' if low_pass_filter else 0,
+    "number of scales": scales.max()
 }
 with open(f"results/{current_timestamp}_log.txt", "w") as f:
     json.dump(log_configs, f, indent=4)
