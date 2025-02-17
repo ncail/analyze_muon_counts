@@ -72,6 +72,7 @@ magnitudes_detrended = np.abs(fft_values_detrended)
 # Get strongest frequency component.
 max_mag_pos = magnitudes_detrended.argmax()
 max_mag_frequency = frequencies_domain[max_mag_pos]
+max_mag_freq_in_hours = (1 / max_mag_frequency) / 3600
 
 # Wavelet analysis.
 scales = np.arange(1, len(event_counts_detrended)/2)
@@ -111,7 +112,6 @@ if mode == 1:
     plt.plot(frequencies_domain, magnitudes_detrended, color='orange')
 
     # Draw and label frequency of max power in per hours.
-    max_mag_freq_in_hours = (1 / max_mag_frequency) / 3600
     plt.axvline(x=max_mag_frequency, color='m', linestyle='--',
                 label=f'Maximum magnitude: {round(max_mag_freq_in_hours, 2)}-hour frequency')
 
@@ -153,6 +153,9 @@ if mode == 2:
     ax.set_title("Muon Count Wavelet Transform")
     fig.colorbar(pcm, ax=ax)
 
+    plt.axhline(y=max_mag_frequency, color='m', linestyle='--',
+                label=f'Maximum magnitude from FFT: {round(max_mag_freq_in_hours, 2)}-hour frequency')
+
     # plt.imshow(np.abs(coeffs), aspect='auto', extent=[min(time_series), max(time_series), frequencies_wt.max(),
     #                                                frequencies_wt.min()])
     # plt.colorbar(label='Power')
@@ -167,6 +170,7 @@ if mode == 2:
 
     plt.savefig(f'results/{current_timestamp}_wavelet_plot.png')
 
+    plt.legend()
     plt.show()
 # Plot wavelet transform end.
 
