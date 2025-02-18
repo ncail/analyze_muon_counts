@@ -32,7 +32,7 @@ Logging messages are prefixed with LOG to distinguish them for the python progra
 // Suspected that writing to sd card is causing the program to crash.
 // WRITE = 0 will still receive all serial data.
 #define WRITE 0
-#define LOGGING 0
+#define LOGGING 1
 
 
 #define SDPIN 10
@@ -176,18 +176,21 @@ void setup_files(){
 
 void write_to_SD(){ 
   while (1){
+
+    int adc = analogRead(A0);
     
     // Log analogRead(A0).
-    if(LOGGING)
-    {
-      // char logMessage[] = "LOG Operation 1 in write_to_SD -- analogRead(A0): "; 
-      // int analogValA0 = analogRead(A0);
-      Serial.print("LOG Operation 1 in write_to_SD -- analogRead(A0): ");
-      Serial.println(analogRead(A0));
-    }
+    // if(LOGGING)
+    // {
+    //   // char logMessage[] = "LOG Operation 1 in write_to_SD -- analogRead(A0): "; 
+    //   // int analogValA0 = analogRead(A0);
+    //   Serial.print("LOG Operation 1 in write_to_SD -- analogRead(A0): ");
+    //   Serial.println(adc);
+    // }
 
-    if (analogRead(A0) > SIGNAL_THRESHOLD){  // Possibly buggy, define adc at top of function instead instead of analogRead(A0) twice.
-      int adc = analogRead(A0);
+    // if (analogRead(A0) > SIGNAL_THRESHOLD){  // Possibly buggy, define adc at top of function instead instead of analogRead(A0) twice.
+    if (adc > SIGNAL_THRESHOLD){
+      // int adc = analogRead(A0);
 
       // Log digitalWrite(6, HIGH).
       if(LOGGING)
