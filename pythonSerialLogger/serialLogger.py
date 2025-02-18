@@ -4,6 +4,7 @@ import os
 import time
 import csv
 import logging
+import argparse
 
 
 # Function uses retry logic to open the serial port. Exits program if port cannot be opened.
@@ -24,16 +25,24 @@ def openSerialPort(port, baudRate, maxAttempts=5, retryInterval=3):
     exit(1)
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--port")
+parser.add_argument("--output")
+
 ''' ************************************************** INITIALIZE ************************************************** '''
+args = parser.parse_args()
+
 # Toggles whether program should write serial data to text file or CSV.
 # Options are 'TEXT' or 'CSV'.
 WRITE = 'CSV'
 
 # Set output directory.
-folderPath = 'data'
+folderPath = args.output if args.output else 'data'
+if not os.path.exists(folderPath):
+    os.makedirs(folderPath)
 
 # Set port info.
-port = 'COM5'
+port = args.port
 baudrate = 9600
 
 # Configure logger.
