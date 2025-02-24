@@ -275,7 +275,27 @@ void write_to_SD(){
           digitalWrite(6, LOW); 
           analogWrite(3, LED_BRIGHTNESS);
 
-          Serial.println((String)count + " " + time_stamp+ " " + adc+ " " + get_sipm_voltage(adc)+ " " + measurement_deadtime+ " " + temperatureC);
+          double sipm_voltage;
+          sipm_voltage = get_sipm_voltage(adc);
+
+          Serial.print(count);
+          Serial.print(" ");
+          Serial.print(time_stamp);
+          Serial.print(" ");
+          Serial.print(adc);
+          Serial.print(" ");
+          Serial.print(sipm_voltage);
+          Serial.print(" ");
+          Serial.print(measurement_deadtime);
+          Serial.print(" ");
+          Serial.println(temperatureC);  // println() only at the end
+
+          // char buffer[50];
+          // sprintf(buffer, "%d %d %d %.2f %d %.2f", count, time_stamp, adc, sipm_voltage, measurement_deadtime, temperatureC);
+          // Serial.println(buffer);
+
+          // Serial.println((String)count + " " + time_stamp+ " " + adc+ " " + sipm_voltage+ " " + measurement_deadtime+ " " + temperatureC);
+          // Serial.flush();
 
           if(WRITE)
           {
