@@ -103,7 +103,7 @@ with open(filePath, 'w', newline='') as csvfile:
             if split_data[0] == 'LOG':
                 logging.debug(f'Received logging message (LOG prefix) from Arduino program:\n\t{raw_data}')
             elif len(split_data) == 6:
-                print("got muon data\n")
+                # print("got muon data\n")
                 event, ardn_time, adc, sipm, deadtime, temp = split_data[0:]
 
                 # Get current timestamp.
