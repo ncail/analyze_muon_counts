@@ -32,17 +32,13 @@ parser.add_argument("--output")
 ''' ************************************************** INITIALIZE ************************************************** '''
 args = parser.parse_args()
 
-# Toggles whether program should write serial data to text file or CSV.
-# Options are 'TEXT' or 'CSV'.
-WRITE = 'CSV'
-
 # Set output directory.
 folderPath = args.output if args.output else 'data'
 if not os.path.exists(folderPath):
     os.makedirs(folderPath)
 
 # Set port info.
-port = args.port
+port = args.port if args.port else 'COM3'
 baudrate = 9600
 
 # Configure logger.
@@ -59,115 +55,82 @@ logging.info("Open serial port successful.")
 
 # Generate unique file name.
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-if WRITE == 'TEXT':
-    fileName = f"data_log_{timestamp}.txt"
-elif WRITE == 'CSV':
-    fileName = f"data_log_{timestamp}.csv"
-else:  # Default is to write to CSV.
-    fileName = f"data_log_{timestamp}.csv"
+fileName = f"data_log_{timestamp}.csv"
 filePath = os.path.join(folderPath, fileName)
-
-''' ************************************************* WRITE TO TEXT ************************************************ '''
-# Text file format.
-# Open file in write mode.
-if WRITE == 'TEXT':
-    with open(filePath, 'w') as file:
-        try:
-            while True:
-                # Read serial data from microcontroller.
-                data = ser.readline().decode('ascii', errors='ignore').strip()
-
-                # Get current timestamp.
-                # timestampLog = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                timestampLog = str(datetime.now())
-
-                # Write timestamp and data to log file.
-                file.write(f'{timestampLog}: {data}\n')
-
-                # Flush the buffer to ensure data is written immediately.
-                file.flush()
-
-        # Break out of loop if communication with microcontroller is lost.
-        except serial.SerialException:
-            print("Error: Communication with the microcontroller has been interrupted.")
-
-        except KeyboardInterrupt:
-            print("Program interrupted by user.")
-
 
 ''' ************************************************* WRITE TO CSV ************************************************* '''
 # CSV format.
 # Open CSV file in write mode.
-if WRITE == 'CSV':
-    with open(filePath, 'w', newline='') as csvfile:
-        logging.info(f"File {filePath} opened as CSV.")
+with open(filePath, 'w', newline='') as csvfile:
+    logging.info(f"File {filePath} opened as CSV.")
 
-        csvwriter = csv.writer(csvfile)
+    csvwriter = csv.writer(csvfile)
 
-        # Write the header row.
-        csvwriter.writerow(['Time_stamp', 'Event', 'Ardn_time[ms]', 'ADC[0-1023]', 'SiPM[mV]', 'Deadtime[ms]',
-                            'Temp[C]'])
+    # Write the header row.
+    csvwriter.writerow(['Time_stamp', 'Event', 'Ardn_time[ms]', 'ADC[0-1023]', 'SiPM[mV]', 'Deadtime[ms]',
+                        'Temp[C]'])
+    csvfile.flush()
 
-        try:
-            data_start = False
-            logging.info("Loop start.")
-            while True:
-                # Flush logger to write message asap.
-                logging.getLogger().handlers[0].flush()
+    try:
+        data_start = False
+        logging.info("Loop start.")
+        while True:
+            # Flush logger to write message asap.
+            logging.getLogger().handlers[0].flush()
 
-                # Read serial data from microcontroller.
-                raw_data = ser.readline().decode('ascii', errors='ignore').strip()
+            # Read serial data from microcontroller.
+            raw_data = ser.readline().decode('ascii', errors='ignore').strip()
 
-                # Skip writing all serial data until DATA START is received.
-                if not data_start:
-                    if raw_data == "DATA START":
-                        data_start = True
-                        logging.info("DATA START serial message received. Begin writing serial data to file.")
-                        continue
-                    else:
-                        continue
-
-                # Split data, assuming space separation.
-                split_data = raw_data.split()
-                # print("raw_data: ", raw_data, "\n")
-                # print("split_data: ", split_data, "\n")
-
-                # Break if split_data is empty.
-                if not split_data:
+            # Skip writing all serial data until DATA START is received.
+            if not data_start:
+                if raw_data == "DATA START":
+                    data_start = True
+                    logging.info("DATA START serial message received. Begin writing serial data to file.")
+                    continue
+                else:
                     continue
 
-                # Extract data elements.
-                if split_data[0] == 'LOG':
-                    logging.debug(f'Received logging message (LOG prefix) from Arduino program:\n\t{raw_data}')
-                elif len(split_data) == 6:
-                    event, ardn_time, adc, sipm, deadtime, temp = split_data[0:]
+            # Split data, assuming space separation.
+            split_data = raw_data.split()
+            # print("raw_data: ", raw_data, "\n")
+            # print("split_data: ", split_data, "\n")
 
-                    # Get current timestamp.
-                    timestampLog = str(datetime.now())
+            # Break if split_data is empty.
+            if not split_data:
+                continue
 
-                    # Write timestamp and data to the CSV file.
-                    csvwriter.writerow([timestampLog, event, ardn_time, adc, sipm, deadtime, temp])
+            # Extract data elements.
+            if split_data[0] == 'LOG':
+                logging.debug(f'Received logging message (LOG prefix) from Arduino program:\n\t{raw_data}')
+            elif len(split_data) == 6:
+                print("got muon data\n")
+                event, ardn_time, adc, sipm, deadtime, temp = split_data[0:]
 
-                    # Flush the buffer to ensure data is written immediately.
-                    csvfile.flush()
-                else:
-                    logging.debug(f"Raw data from serial.readline() is invalid and was not appended to data file: "
-                                  f"\n\traw_data: {raw_data}"
-                                  f"\n\tsplit_data: {split_data}")
+                # Get current timestamp.
+                timestampLog = str(datetime.now())
 
-        except PermissionError:
-            print("Error: Permission to write to file denied.")
-            logging.info("Error: Permission to write to file denied.")
+                # Write timestamp and data to the CSV file.
+                csvwriter.writerow([timestampLog, event, ardn_time, adc, sipm, deadtime, temp])
 
-        # Break out of loop if communication with microcontroller is lost.
-        except serial.SerialException:
-            print("Error: Communication with the microcontroller has been interrupted.")
-            logging.info("Error: Communication with the microcontroller has been interrupted.")
+                # Flush the buffer to ensure data is written immediately.
+                csvfile.flush()
+            else:
+                logging.debug(f"Raw data from serial.readline() is invalid and was not appended to data file: "
+                              f"\n\traw_data: {raw_data}"
+                              f"\n\tsplit_data: {split_data}")
 
-        except KeyboardInterrupt:
-            print("Program interrupted by user.")
-            logging.info("Program interrupted by user.")
+    except PermissionError:
+        print("Error: Permission to write to file denied.")
+        logging.info("Error: Permission to write to file denied.")
+
+    # Break out of loop if communication with microcontroller is lost.
+    except serial.SerialException:
+        print("Error: Communication with the microcontroller has been interrupted.")
+        logging.info("Error: Communication with the microcontroller has been interrupted.")
+
+    except KeyboardInterrupt:
+        print("Program interrupted by user.")
+        logging.info("Program interrupted by user.")
 
 # Close the file.
 logging.info("Closing file.")
