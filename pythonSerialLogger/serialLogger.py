@@ -42,14 +42,14 @@ if not os.path.exists(folderPath):
 port = args.port if args.port else 'COM3'
 baudrate = 9600
 
-# Configure logger. Write to new file when log file gets to 5 MB, save 3 backups.
-logging.basicConfig(filename="app.log")
-log_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCount=3)
+# Configure logger. Overwrite file when log file gets to 5 MB.
+# Create a RotatingFileHandler that overwrites the log when it fills up.
+log_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCount=0)
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.handlers.clear()  # Removes any existing handlers.
 logger.addHandler(log_handler)
-logger.info("Logging started.")
 
 # Open serial port.
 ser = openSerialPort(port, baudrate)
