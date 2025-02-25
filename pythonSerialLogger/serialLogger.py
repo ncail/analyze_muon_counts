@@ -47,6 +47,7 @@ log_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCou
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.handlers.clear()  # Dont write to console.
 logger.addHandler(log_handler)
 logger.info("Logging started.")
 
