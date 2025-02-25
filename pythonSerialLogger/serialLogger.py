@@ -44,12 +44,19 @@ baudrate = 9600
 
 # Configure logger. Overwrite file when log file gets to 5 MB.
 # Create a RotatingFileHandler that overwrites the log when it fills up.
-log_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCount=0)
-log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.handlers.clear()  # Removes any existing handlers.
-logger.addHandler(log_handler)
+log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+file_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCount=0)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+console_handler.setLevel(logging.INFO)
+
+logger = logging.getLogger()
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 # Open serial port.
 ser = openSerialPort(port, baudrate)
