@@ -48,11 +48,11 @@ log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(mess
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(log_handler)
-logging.info("Logging started.")
+logger.info("Logging started.")
 
 # Open serial port.
 ser = openSerialPort(port, baudrate)
-logging.info("Open serial port successful.")
+logger.info("Open serial port successful.")
 
 # Generate unique file name.
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -63,7 +63,7 @@ filePath = os.path.join(folderPath, fileName)
 # CSV format.
 # Open CSV file in write mode.
 with open(filePath, 'w', newline='') as csvfile:
-    logging.info(f"File {filePath} opened as CSV.")
+    logger.info(f"File {filePath} opened as CSV.")
 
     csvwriter = csv.writer(csvfile)
 
@@ -74,7 +74,7 @@ with open(filePath, 'w', newline='') as csvfile:
 
     try:
         data_start = False
-        logging.info("Loop start.")
+        logger.info("Loop start.")
         while True:
             # Flush logger to write message asap.
             logging.getLogger().handlers[0].flush()
@@ -86,7 +86,7 @@ with open(filePath, 'w', newline='') as csvfile:
             if not data_start:
                 if raw_data == "DATA START":
                     data_start = True
-                    logging.info("DATA START serial message received. Begin writing serial data to file.")
+                    logger.info("DATA START serial message received. Begin writing serial data to file.")
                     continue
                 else:
                     continue
@@ -102,7 +102,7 @@ with open(filePath, 'w', newline='') as csvfile:
 
             # Extract data elements.
             if split_data[0] == 'LOG':
-                logging.debug(f'Received logging message (LOG prefix) from Arduino program:\n\t{raw_data}')
+                logger.debug(f'Received logging message (LOG prefix) from Arduino program:\n\t{raw_data}')
             elif len(split_data) == 6:
                 # print("got muon data\n")
                 event, ardn_time, adc, sipm, deadtime, temp = split_data[0:]
@@ -116,24 +116,24 @@ with open(filePath, 'w', newline='') as csvfile:
                 # Flush the buffer to ensure data is written immediately.
                 csvfile.flush()
             else:
-                logging.debug(f"Raw data from serial.readline() is invalid and was not appended to data file: "
+                logger.debug(f"Raw data from serial.readline() is invalid and was not appended to data file: "
                               f"\n\traw_data: {raw_data}"
                               f"\n\tsplit_data: {split_data}")
 
     except PermissionError:
         print("Error: Permission to write to file denied.")
-        logging.info("Error: Permission to write to file denied.")
+        logger.info("Error: Permission to write to file denied.")
 
     # Break out of loop if communication with microcontroller is lost.
     except serial.SerialException:
         print("Error: Communication with the microcontroller has been interrupted.")
-        logging.info("Error: Communication with the microcontroller has been interrupted.")
+        logger.info("Error: Communication with the microcontroller has been interrupted.")
 
     except KeyboardInterrupt:
         print("Program interrupted by user.")
-        logging.info("Program interrupted by user.")
+        logger.info("Program interrupted by user.")
 
 # Close the file.
-logging.info("Closing file.")
+logger.info("Closing file.")
 csvfile.close()
-logging.info("Program end.")
+logger.info("Program end.")
