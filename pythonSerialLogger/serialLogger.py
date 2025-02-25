@@ -55,6 +55,8 @@ console_handler.setFormatter(log_formatter)
 console_handler.setLevel(logging.INFO)
 
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.handlers.clear()  # Prevents duplicate logs.
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
