@@ -4,6 +4,7 @@ import os
 import time
 import csv
 import logging
+from logging.handlers import RotatingFileHandler
 import argparse
 
 
@@ -41,13 +42,13 @@ if not os.path.exists(folderPath):
 port = args.port if args.port else 'COM3'
 baudrate = 9600
 
-# Configure logger.
-logging.basicConfig(
-    filename='app.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logging.info("Program start.")
+# Configure logger. Write to new file when log file gets to 5 MB, save 3 backups.
+log_handler = RotatingFileHandler("app.log", maxBytes=5 * 1024 * 1024, backupCount=3)
+log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(log_handler)
+logging.info("Logging started.")
 
 # Open serial port.
 ser = openSerialPort(port, baudrate)
