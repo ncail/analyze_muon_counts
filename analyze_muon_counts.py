@@ -11,16 +11,17 @@ import matplotlib.pyplot as plt
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 2
+mode = 0
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
+data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
 
 # Config signal smoothing.
 gaussian_smoothing_sigma = 0
 
 # Config fft post-processing.
 low_pass_filter = 1/(7*3600)  # Cutoff frequency.
+
 
 ''' *************************************** PROCESSING ****************************************** '''
 # Get timestamp for filenames.
