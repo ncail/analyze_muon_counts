@@ -11,16 +11,16 @@ import matplotlib.pyplot as plt
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 0
+mode = 2
 
 # Get input and output paths.
 data_filepath = 'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
 
 # Config signal smoothing.
-gaussian_smoothing_sigma = 3
+gaussian_smoothing_sigma = 0
 
 # Config fft post-processing.
-low_pass_filter = 1/3600  # Cutoff frequency.
+low_pass_filter = 1/(7*3600)  # Cutoff frequency.
 
 ''' *************************************** PROCESSING ****************************************** '''
 # Get timestamp for filenames.
@@ -80,6 +80,9 @@ if mode == 2:
     coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor',
                                       sampling_period=time_interval.total_seconds())
 
+# Add mode for testing different wavelets from CWT webpage.
+
+
 ''' **************************************** PLOT RESULTS *************************************** '''
 # Get timestamps for plotting raw data and wavelet transform.
 time_series = df[timestamp_col].tolist()
@@ -134,7 +137,7 @@ if mode == 1:
 
 # Plot wavelet transform start.
 if mode == 2:
-    morlet_const = 0.849
+    morlet_const = 1  # 0.849
 
     # Plot cone of influence.
     coi = morlet_const * scales
@@ -147,6 +150,7 @@ if mode == 2:
     fig, ax = plt.subplots(figsize=(10, 6))
     pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
     ax.set_xlabel("Date Time")
+    ax.set_yscale("log")
     ax.set_ylabel("Frequency (Hz)")
     ax.set_title("Muon Count Wavelet Transform")
     fig.colorbar(pcm, ax=ax)
@@ -158,9 +162,9 @@ if mode == 2:
     plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
     plt.plot(coi_end, frequencies_wt, 'w--')
 
+    plt.legend()
     plt.savefig(f'results/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
 
-    plt.legend()
     plt.show()
 # Plot wavelet transform end.
 
