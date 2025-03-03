@@ -5,8 +5,8 @@ import pandas as pd
 ''' ************************************************ Config ************************************************ '''
 data_filepath = ('C:\\data\\project_of_excellence\\muon_project_programs\\data_files\\data_from_onedrive'
                  '/data_log_20241004_120111_manually_trimmed.csv')
-resampling_time_interval = timedelta(minutes=60)
-output_path = f'preprocessed_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
+resampling_time_interval = timedelta(seconds=10)
+output_path = f'preprocessed_data/preprocessed_1S-intervals_20241004_120111_manually_trimmed.csv'
 
 ''' ********************************************* Processing *********************************************** '''
 # Read file into dataframe. File should be muon detector CSV file.
