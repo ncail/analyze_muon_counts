@@ -1,5 +1,6 @@
 # Imports.
 import pandas as pd
+import numpy as np
 
 ''' ************************************************ CONFIG ************************************************ '''
 omni_file = f'preprocessed_data/omni_data/preprocessed_hourly_omni2_Iz3WfPPexI.csv'
@@ -17,10 +18,20 @@ muon_df.columns = muon_df_cols
 # Merge on datetime. Keep only matching rows from omni_df.
 df = pd.merge(muon_df, omni_df, on='datetime', how='inner')
 
-# For every 24 data points (24 hours), get amplitudes and phases using double harmonic fit.
+# For each data type.
+# For every 24 data points (24 hours), get amplitudes and phases using single harmonic fit.
+for col in [df.columns[1::]]:
+    for lLoop in range(0, len(df), 24):
+        if lLoop + 24 > len(df):
+            break
 
+        segment = df.iloc[lLoop:lLoop+24]
+        t = np.arange(24)
+        data = segment[col].values
 
-    # Calculate sum of squared differences for each day of fitting.
+        # Least squares solving for coefficients. These will allow us to extract the amplitude and phase later.
+
+        # Calculate sum of squared differences for each day of fitting.
 
 
 # Plot amplitudes vs time, phases vs time, overlapping all correlation parameters and muon data.
