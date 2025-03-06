@@ -15,6 +15,7 @@ mode = 0
 
 # Get input and output paths.
 data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
+output_path = 'results/plots'
 
 # Config signal smoothing.
 gaussian_smoothing_sigma = 0
@@ -106,7 +107,7 @@ if mode == 0:
     if gaussian_smoothing_sigma:
         plt.title(f'Gaussian-smoothed: sigma={gaussian_smoothing_sigma}')
 
-    plt.savefig(f'results/{current_timestamp}_raw_data_plot.png', bbox_inches='tight')
+    plt.savefig(f'{output_path}/{current_timestamp}_raw_data_plot.png', bbox_inches='tight')
 
     plt.show()
 # Plot raw data end.
@@ -130,7 +131,7 @@ if mode == 1:
     if low_pass_filter:
         plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz")
 
-    plt.savefig(f'results/{current_timestamp}_fft_plot.png', bbox_inches='tight')
+    plt.savefig(f'{output_path}/{current_timestamp}_fft_plot.png', bbox_inches='tight')
 
     plt.show()
 # Plot ffts end.
@@ -164,7 +165,7 @@ if mode == 2:
     plt.plot(coi_end, frequencies_wt, 'w--')
 
     plt.legend()
-    plt.savefig(f'results/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
+    plt.savefig(f'{output_path}/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
 
     plt.show()
 # Plot wavelet transform end.
@@ -180,7 +181,7 @@ log_configs = {
     "low pass filter cutoff frequency": f'1/{int(1/low_pass_filter)}' if low_pass_filter else 0,
     "number of scales": scales.max()
 }
-with open(f"results/{current_timestamp}_log.txt", "w") as f:
+with open(f"{output_path}/{current_timestamp}_log.txt", "w") as f:
     json.dump(log_configs, f, indent=4)
 
 
