@@ -10,7 +10,7 @@ output_path = f'preprocessed_data/omni_data/preprocessed_hourly_omni2_Iz3WfPPexI
 
 ''' ********************************************* Processing *********************************************** '''
 # Get solar data.
-data_cols = ['year', 'doy', 'hour', 'Scalar B, nT', 'SW Plasma Speed, km/s', 'R (Sunspot No.)', 'f10.7_index']
+data_cols = ['year', 'doy', 'hour', 'Scalar_B_nT', 'SW_Plasma_Speed_kmps', 'R_Sunspot_No', 'f10_7_index']
 df = pd.read_csv(data_lst, delimiter='\s+', header=None, names=data_cols)  # Treat any amount of whitespace as a
 # delimiter.
 
@@ -22,7 +22,7 @@ df['datetime'] = df['datetime'] + pd.to_timedelta(df['hour'], unit='h')
 
 # Edit columns.
 df.drop(columns=['year', 'doy', 'hour'])
-reorder_cols = ['datetime', 'Scalar B, nT', 'SW Plasma Speed, km/s', 'R (Sunspot No.)', 'f10.7_index']
+reorder_cols = ['datetime', 'Scalar_B_nT', 'SW_Plasma_Speed_kmps', 'R_Sunspot_No', 'f10_7_index']
 df = df[reorder_cols]
 
 # Save to CSV.
