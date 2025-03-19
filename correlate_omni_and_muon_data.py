@@ -21,11 +21,11 @@ w = 2 * np.pi / 24  # 24-hour frequency.
 omni_df = pd.read_csv(omni_file, parse_dates=['datetime'])
 muon_df = pd.read_csv(muon_file, parse_dates=['Time_stamp'])
 muon_df_cols = muon_df.columns.tolist()
-muon_df_cols[0] = 'datetime'
+muon_df_cols[0] = 'datetime_CT'
 muon_df.columns = muon_df_cols
 
 # Merge on datetime. Keep only matching rows from omni_df.
-df = pd.merge(muon_df, omni_df, on='datetime', how='inner')
+df = pd.merge(muon_df, omni_df, on='datetime_CT', how='inner')
 
 # Start df at first midnight.
 df.set_index('datetime', inplace=True)
@@ -85,9 +85,10 @@ def test():
     exit()
 # End test().
 
-# For each parameter dataset.
+
+# For each parameter dataset, except daily averaged values sunspot number and f10.7 index.
 # For every 24 data points (24 hours), get amplitudes and phases using single harmonic fit.
-for col in df.columns:
+for col in df.columns[0:2]:
     results = []
     for lLoop in range(0, len(df), 24):
         if lLoop + 24 > len(df):
