@@ -1,17 +1,18 @@
 # Imports.
 from datetime import timedelta
 import pandas as pd
+from zoneinfo import ZoneInfo
 
 ''' ************************************************ CONFIG ************************************************ '''
 data_filepath = ('C:\\data\\project_of_excellence\\muon_project_programs\\data_files\\data_from_onedrive'
-                 '/data_log_20241004_120111_manually_trimmed.csv')
-resampling_time_interval = timedelta(seconds=10)
-output_path = f'preprocessed_data/muon_data/preprocessed_1S-intervals_20241004_120111_manually_trimmed.csv'
+                 '/data_log_20250227_132422.csv')
+resampling_time_interval = timedelta(hours=1)
+output_path = f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
 
 
 ''' ********************************************* PROCESSING *********************************************** '''
 # Read file into dataframe. File should be muon detector CSV file.
-df = pd.read_csv(data_filepath)
+df = pd.read_csv(data_filepath)  #, parse_dates=['Time_stamp'])
 
 # Delete invalid rows, convert data to pandas standards:
 # timestamp column to datetime, and count column to numeric.
@@ -20,7 +21,14 @@ timestamp_col = column_names[0]
 count_col = column_names[1]
 
 df.drop(index=0, inplace=True)  # First row is a sub-header.
-df[timestamp_col] = pd.to_datetime(df[timestamp_col])  # Convert timestamp col to datetime.
+
+# Timestamps are in local time.
+df[timestamp_col] = pd.to_datetime(df[timestamp_col], format='mixed').dt.tz_localize(ZoneInfo('America/Chicago'))
+
+# Convert time to UTC.
+df[timestamp_col] = df[timestamp_col].dt.tz_convert('UTC')
+df[timestamp_col] = pd.to_datetime(df[timestamp_col], utc=True)
+
 df[count_col] = pd.to_numeric(df[count_col])  # Convert count col to numeric.
 
 # Create new dataset start.
@@ -37,7 +45,8 @@ time_avgd_series = df[count_col].resample(resampling_time_interval).apply(
 # Has Time_stamp and Count columns
 time_avgd_df = time_avgd_series.reset_index().rename(columns={count_col: 'Count'})
 
-# Drop last count.
+# Drop first and last count.
+time_avgd_df.drop(time_avgd_df.index[0], inplace=True)
 time_avgd_df.drop(time_avgd_df.index[-1], inplace=True)
 
 # Write to csv.
