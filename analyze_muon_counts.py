@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 mode = 0
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20241004_120111_manually_trimmed.csv'
-output_path = 'results/plots'
+data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
+output_path = 'results/spectral_analysis_plots'
 
 # Config signal smoothing.
 gaussian_smoothing_sigma = 0
@@ -26,7 +26,7 @@ low_pass_filter = 1/(7*3600)  # Cutoff frequency.
 
 ''' *************************************** PROCESSING ****************************************** '''
 # Get timestamp for filenames.
-current_timestamp = datetime.datetime.now().strftime('%H%M%S_%m%d%Y')
+current_timestamp = datetime.datetime.now().strftime('%m%d%Y_%H%M%S')
 
 # Read file into dataframe. File should be muon detector CSV file.
 df = pd.read_csv(data_filepath, parse_dates=[0])
