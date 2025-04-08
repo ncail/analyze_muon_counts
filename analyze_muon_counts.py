@@ -7,11 +7,12 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.fft import rfft, rfftfreq
 import pywt
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 
 
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet
-mode = 0
+mode = 2
 
 # Get input and output paths.
 data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
@@ -21,7 +22,7 @@ output_path = 'results/spectral_analysis_plots'
 gaussian_smoothing_sigma = 0
 
 # Config fft post-processing.
-low_pass_filter = 1/(7*3600)  # Cutoff frequency.
+low_pass_filter = 1/(6*3600)  # Cutoff frequency.
 
 
 ''' *************************************** PROCESSING ****************************************** '''
@@ -71,10 +72,16 @@ if low_pass_filter:
 # magnitudes_raw = np.abs(fft_values_raw)
 magnitudes_detrended = np.abs(fft_values_detrended)
 
-# Get strongest frequency component.
-max_mag_pos = magnitudes_detrended.argmax()
-max_mag_frequency = frequencies_domain[max_mag_pos]
-max_mag_freq_in_hours = (1 / max_mag_frequency) / 3600
+# Convert freqs from Hz to cycles per hour.
+frequencies_per_hour = frequencies_domain * 3600
+
+# Get indices of top 3 peaks/strongest frequency components.
+top5_indices = np.argsort(magnitudes_detrended)[-5:][::-1]  # Top 3 in descending order.
+
+# Get corresponding frequencies and magnitudes.
+top5_freqs = frequencies_domain[top5_indices]
+top5_mags = magnitudes_detrended[top5_indices]
+max_mag_freq_in_hours = 1 / frequencies_per_hour
 
 # Wavelet analysis.
 scales = np.arange(1, len(event_counts_detrended)/2)
@@ -119,17 +126,29 @@ if mode == 1:
     plt.plot(frequencies_domain, magnitudes_detrended, color='orange')
 
     # Draw and label frequency of max power in per hours.
-    plt.axvline(x=max_mag_frequency, color='m', linestyle='--',
-                label=f'Maximum magnitude: {round(max_mag_freq_in_hours, 2)}-hour frequency')
+    legend_labels = []
+    handles = []
+    for ind, peak in enumerate(top5_freqs):
+        plt.axvline(x=peak, color='m', linestyle='--')
 
-    plt.suptitle("FFT of Detrended Data")
-    plt.xlabel("Frequency (Hz)")
-    plt.ylabel("Magnitude")
-    plt.legend()
-    plt.grid(True)
+        # Legend entries.
+        dummy_line = mlines.Line2D([], [], color='m', linestyle='-')
+        handles.append(dummy_line)
+        legend_labels.append(f'Peak {ind + 1}: {max_mag_freq_in_hours[top5_indices[ind]]:.2f}-hour frequency')
+    # End for.
+
+    legend = plt.legend(handles=handles, labels=legend_labels, loc='best', fontsize=15)
+    legend.get_frame().set_edgecolor('black')
+
+    plt.suptitle("FFT of Detrended Data", fontsize=25)
+    plt.xlabel("Frequency (Hz)", fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.ylabel("Magnitude", fontsize=20)
+    plt.grid(True, alpha=0.75)
 
     if low_pass_filter:
-        plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz")
+        plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz", fontsize=15)
 
     plt.savefig(f'{output_path}/{current_timestamp}_fft_plot.png', bbox_inches='tight')
 
@@ -151,20 +170,32 @@ if mode == 2:
 
     fig, ax = plt.subplots(figsize=(10, 6))
     pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
-    ax.set_xlabel("Date Time")
+    ax.set_xlabel("Date Time", fontsize=15)
+    plt.xticks(rotation=45, ha='right', fontsize=12)
+    plt.yticks(fontsize=12)
     ax.set_yscale("log")
-    ax.set_ylabel("Frequency (Hz)")
-    ax.set_title("Muon Count Wavelet Transform")
+    ax.set_ylabel("Frequency (Hz)", fontsize=15)
+    ax.set_title("Muon Count Wavelet Transform", fontsize=25)
     fig.colorbar(pcm, ax=ax)
 
-    plt.axhline(y=max_mag_frequency, color='m', linestyle='--',
-                label=f'Maximum magnitude from FFT: {round(max_mag_freq_in_hours, 2)}-hour frequency')
+    legend_labels = []
+    handles = []
+    for ind, peak in enumerate(top5_freqs):
+        plt.axhline(y=peak, color='m', linestyle='--')
+
+        # Legend entries.
+        dummy_line = mlines.Line2D([], [], color='m', linestyle='-')
+        handles.append(dummy_line)
+        legend_labels.append(f'Peak {ind + 1} from FFT: {max_mag_freq_in_hours[top5_indices[ind]]:.2f}-hour frequency')
+    # End for.
+    legend_labels.append('COI')
+    legend = plt.legend(handles=handles, labels=legend_labels, loc='best', fontsize=12)
+    legend.get_frame().set_edgecolor('black')
 
     # Plot COI.
-    plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
+    plt.plot(coi_start, frequencies_wt, 'w--')
     plt.plot(coi_end, frequencies_wt, 'w--')
 
-    plt.legend()
     plt.savefig(f'{output_path}/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
 
     plt.show()
