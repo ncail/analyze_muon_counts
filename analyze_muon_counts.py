@@ -8,6 +8,7 @@ from scipy.fft import rfft, rfftfreq
 import pywt
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import seaborn as sns
 
 
 ''' ***************************************** CONFIG ******************************************** '''
@@ -23,6 +24,14 @@ gaussian_smoothing_sigma = 0
 
 # Config fft post-processing.
 low_pass_filter = 1/(6*3600)  # Cutoff frequency.
+
+# Wavelet. Bandwidth-Center frequency.
+wavelet = 'cmor1.5-1.0'
+
+
+# Returns endpoints on a log progression. For the widths of the wavelet transform.
+def get_scales(data):
+    return np.geomspace(2, 72, num=100)
 
 
 ''' *************************************** PROCESSING ****************************************** '''
@@ -84,9 +93,9 @@ top5_mags = magnitudes_detrended[top5_indices]
 max_mag_freq_in_hours = 1 / frequencies_per_hour
 
 # Wavelet analysis.
-scales = np.arange(1, len(event_counts_detrended)/2)
+scales = get_scales(event_counts_detrended)
 if mode == 2:
-    coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, 'cmor',
+    coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, f'{wavelet}',
                                       sampling_period=time_interval.total_seconds())
 
 # Add mode for testing different wavelets from CWT webpage.
@@ -100,16 +109,17 @@ time_series = df[timestamp_col].tolist()
 # Plot raw data (and smoothed data) start.
 # To identify transient events, which may correspond to solar flares, etc.
 if mode == 0:
-    # Plot mean value (background level).
+    # Plot raw data and mean value (background level).
+    sns.set_style("whitegrid")  # Soft grid.
     plt.figure(figsize=(10, 6))
     plt.plot(time_series, event_counts_raw, label="Data")
     plt.plot(time_series, np.full(len(time_series), background_level), color="red", label="Average")
-    plt.suptitle("Detector event counts")
-    plt.xlabel("Time")
-    plt.xticks(rotation=45)
-    plt.ylabel(f"Counts (per {int(time_interval.total_seconds())} sec)")
-    plt.legend()
-    plt.grid(True)
+    plt.title("Muon Counts Time Series", fontsize=20)
+    plt.xlabel("Time", fontsize=15)
+    plt.xticks(rotation=45, fontsize=15)
+    plt.ylabel(f"Counts (per hour)", fontsize=15)
+    plt.legend(fontsize=15)
+    # plt.grid(True)
 
     if gaussian_smoothing_sigma:
         plt.title(f'Gaussian-smoothed: sigma={gaussian_smoothing_sigma}')
@@ -122,6 +132,7 @@ if mode == 0:
 
 # Plot ffts start.
 if mode == 1:
+    sns.set_style("whitegrid")  # Soft grid.
     plt.figure(figsize=(10, 6))
     plt.plot(frequencies_domain, magnitudes_detrended, color='orange')
 
@@ -140,15 +151,15 @@ if mode == 1:
     legend = plt.legend(handles=handles, labels=legend_labels, loc='best', fontsize=15)
     legend.get_frame().set_edgecolor('black')
 
-    plt.suptitle("FFT of Detrended Data", fontsize=25)
+    plt.title("FFT of Muon Count Data", fontsize=25)
     plt.xlabel("Frequency (Hz)", fontsize=20)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     plt.ylabel("Magnitude", fontsize=20)
-    plt.grid(True, alpha=0.75)
+    # plt.grid(True, alpha=0.75)
 
-    if low_pass_filter:
-        plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz", fontsize=15)
+    # if low_pass_filter:
+        # plt.title(f"Low pass filter excludes freq>1/{int(1/low_pass_filter)} Hz", fontsize=15)
 
     plt.savefig(f'{output_path}/{current_timestamp}_fft_plot.png', bbox_inches='tight')
 
@@ -158,15 +169,15 @@ if mode == 1:
 
 # Plot wavelet transform start.
 if mode == 2:
-    morlet_const = 1  # 0.849
+    morlet_const = np.sqrt(2)
 
     # Plot cone of influence.
     coi = morlet_const * scales
 
     # Convert COI values to actual time indices.
     # COI is in terms of the scale, so for each scale, we compute the start and end of the cone.
-    coi_start = time_series[0] + pd.to_timedelta(coi * time_interval, unit='s')  # Start of COI at each scale.
-    coi_end = time_series[-1] - pd.to_timedelta(coi * time_interval, unit='s')  # End of COI at each scale.
+    coi_start = time_series[0] + pd.to_timedelta(coi, unit='h')  # Start of COI at each scale.
+    coi_end = time_series[-1] - pd.to_timedelta(coi, unit='h')  # End of COI at each scale.
 
     fig, ax = plt.subplots(figsize=(10, 6))
     pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
@@ -178,24 +189,38 @@ if mode == 2:
     ax.set_title("Muon Count Wavelet Transform", fontsize=25)
     fig.colorbar(pcm, ax=ax)
 
-    legend_labels = []
-    handles = []
-    for ind, peak in enumerate(top5_freqs):
-        plt.axhline(y=peak, color='m', linestyle='--')
+    # legend_labels = []
+    # handles = []
+    # for ind, peak in enumerate(top5_freqs):
+    #     plt.axhline(y=peak, color='m', linestyle='--')
 
-        # Legend entries.
-        dummy_line = mlines.Line2D([], [], color='m', linestyle='-')
-        handles.append(dummy_line)
-        legend_labels.append(f'Peak {ind + 1} from FFT: {max_mag_freq_in_hours[top5_indices[ind]]:.2f}-hour frequency')
-    # End for.
-    legend_labels.append('COI')
-    legend = plt.legend(handles=handles, labels=legend_labels, loc='best', fontsize=12)
-    legend.get_frame().set_edgecolor('black')
+    #     # Legend entries.
+    #     dummy_line = mlines.Line2D([], [], color='m', linestyle='-')
+    #     handles.append(dummy_line)
+    #     legend_labels.append(f'Peak {ind + 1} from FFT: {max_mag_freq_in_hours[top5_indices[ind]]:.2f}-hour
+    #     frequency')
+    # # End for.
+    # legend_labels.append('COI')
+    # legend = plt.legend(handles=handles, labels=legend_labels, loc='best', fontsize=12)
+    # legend.get_frame().set_edgecolor('black')
+
+    # Plot ~24-hr frequency.
+    plt.axhline(y=top5_freqs[2], color='m', linestyle='--',
+                label=f'From FFT: '
+                      f'{max_mag_freq_in_hours[top5_indices[2]]:.2f}-hour frequency')
+                      # f'\n{max_mag_freq_in_hours[top5_indices[3]]:.2f}-hour frequency')
+    # plt.axhline(y=top5_freqs[3], color='m', linestyle='--')
 
     # Plot COI.
-    plt.plot(coi_start, frequencies_wt, 'w--')
-    plt.plot(coi_end, frequencies_wt, 'w--')
+    valid = coi_start < coi_end
+    plt.fill_betweenx(frequencies_wt[valid], time_series[0], coi_start[valid],
+                      color='white', alpha=0.3, hatch='//')
+    plt.fill_betweenx(frequencies_wt[valid], coi_end[valid], time_series[-1],
+                      color='white', alpha=0.3, hatch='//')
+    # plt.plot(coi_start, frequencies_wt, 'w--', label='COI')
+    # plt.plot(coi_end, frequencies_wt, 'w--')
 
+    plt.legend(fontsize=15)
     plt.savefig(f'{output_path}/{current_timestamp}_wavelet_plot.png', bbox_inches='tight')
 
     plt.show()
@@ -210,6 +235,7 @@ log_configs = {
     "sampling interval": str(time_interval),
     "gaussian smoothing sigma parameter": gaussian_smoothing_sigma,
     "low pass filter cutoff frequency": f'1/{int(1/low_pass_filter)}' if low_pass_filter else 0,
+    "wavelet": f'{wavelet}',
     "number of scales": scales.max()
 }
 with open(f"{output_path}/{current_timestamp}_log.txt", "w") as f:
