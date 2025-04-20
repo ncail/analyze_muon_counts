@@ -11,6 +11,8 @@ The resulting amplitudes and phases can be used to calculate the Pearson and Spe
 IMF and SWS.
 Daily Omni data will be correlated directly with daily-binned muon counts to produce heatmap visuals of the
 Pearson and Spearman correlation matrices.
+Since the literature suggests that CR flux should correlate with IMF most strongly one day later, we shift the IMF
+back a day and recompute the correlation coefficients and do visualization on this.
 
 Visualization.
 The correlation of harmonic components and daily raw data with the muon count are also demonstrated by scatter plots
@@ -19,6 +21,8 @@ Scatter plots have the daily muon amplitude or phase versus the respective harmo
 and versus the daily-averaged values of each of the solar weather variables.
 Line plots show the daily amplitudes or phases of muon count, IMF, and SWS over time. And the daily raw muon count,
 IMF, SWS, R SNo., and F10.7 Index over time.
+Histograms are generated to display the distribution of raw muon counts, and amplitudes and phases, as well as the
+average and median as vertical lines.
 
 """
 
@@ -29,25 +33,25 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from zoneinfo import ZoneInfo
 import seaborn as sns
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 
 
 ''' ************************************************ CONFIG ************************************************ '''
-hourly_data_file = 'preprocessed_data/prepared_for_correlation/data_hourly_04172025_221740.csv'
-daily_data_file = 'preprocessed_data/prepared_for_correlation/data_daily_04172025_221740.csv'
+hourly_data_file = 'preprocessed_data/prepared_for_correlation/data_hourly_04192025_230731_20250325-20250415_whole_days.csv'
+daily_data_file = 'preprocessed_data/prepared_for_correlation/data_daily_04192025_230731_20250325-20250415_whole_days.csv'
 
 current_timestamp = datetime.datetime.now().strftime('%m%d%Y_%H%M%S')
-output_path = f'results/omni_correlation/{current_timestamp}'
+output_path = f'results/omni_correlation/{current_timestamp}_03252025-04152025'
 visuals_path = f'{output_path}/plots'
 
 save_harmonic_plots = False
-do_heatmaps = False
-do_scatterplots = False
+do_heatmaps = True
+do_scatterplots = True
 do_lineplots = True
-write_corrs = False
+write_corrs = True
+do_one_day_shift = False
 
 
 ''' ********************************************* PROCESSING *********************************************** '''
@@ -157,7 +161,7 @@ for col_num, col in enumerate(hourly_df.columns[:3]):
         X = np.column_stack([
             np.cos(w * t),
             np.sin(w * t),
-            np.ones_like(t)  # Offset term
+            np.ones_like(t)  # Offset term.
         ])
 
         # Solve least squares.
@@ -194,7 +198,7 @@ for col_num, col in enumerate(hourly_df.columns[:3]):
             plt.plot(t, y_fit, label='Harmonic fit', color='g')
             plt.title(f"{titles[col_num]} 24-hr Harmonic Fit")
             plt.ylabel(y_axes[col_num])
-            plt.axvline(x=peak_hour, color='m', linestyle='--', label=f'Peak hour (CT): {peak_hour:.1f}')
+            plt.axvline(x=peak_hour, color='m', linestyle='--', label=f'Peak hour (UTC): {peak_hour:.1f}')
             plt.xticks(t, time_range, rotation=45, ha='right')
             plt.legend()
             plt.grid(True, alpha=0.75)
@@ -202,25 +206,12 @@ for col_num, col in enumerate(hourly_df.columns[:3]):
             plt.savefig(f'{visuals_path}/{col}_harmonic_fit_plot_{lLoop // 24}.png', bbox_inches='tight')
             # plt.show()
             plt.close()
-    # End current col.
+    # End current day.
 
     ''' ********************************************* WRITE RESULTS *********************************************** '''
     # Convert to dataframe and write results to csv.
     df_results = pd.DataFrame(results, columns=["Day", "Offset", "Amplitude", "Phase (rad)", "Phase (hours)",
                                                 "Peak hour", "R2"])
-
-    # Convert peak hours in UTC to local time.
-    temp = pd.DataFrame()
-
-    # Combine day and peak hour, set as UTC.
-    temp['datetime_utc'] = df_results['Day'] + pd.to_timedelta(df_results['Peak hour'], unit='h')
-    # temp['datetime_utc'] = temp['datetime_utc'].dt.tz_localize('UTC')
-
-    # Convert to local time (auto DST handling).
-    temp['datetime_local'] = temp['datetime_utc'].dt.tz_convert(ZoneInfo('America/Chicago'))
-
-    # Extract just the local hour if needed.
-    df_results['Peak hour'] = temp['datetime_local'].dt.hour + temp['datetime_local'].dt.minute / 60
 
     # Save to csv.
     df_results.to_csv(f'{output_path}/{col}_harmonic_components_per_day.csv', index=False)
@@ -237,6 +228,20 @@ amplitudes_df.to_csv(f'{output_path}/amplitudes_per_day.csv', index=True)
 phases_df.to_csv(f'{output_path}/phases_per_day.csv', index=True)
 
 ''' ********************************************* CORRELATION CALCS *********************************************** '''
+if do_one_day_shift:
+    count_col = daily_df['Count'].copy()
+    daily_df = daily_df.shift(-1)
+    daily_df['Count'] = count_col
+
+    count_amps = amplitudes_df['Count'].copy()
+    amplitudes_df = amplitudes_df.shift(-1)
+    amplitudes_df['Count'] = count_amps
+
+    count_phases = phases_df['Count'].copy()
+    phases_df = phases_df.shift(-1)
+    phases_df['Count'] = count_phases
+# End if.
+
 # Correlations.
 # Do pearson and spearman correlation on daily data.
 all_daily_pearson_corr = daily_df.corr(method='pearson')
@@ -276,7 +281,7 @@ def heat_map(corr_matrix, title, filename):
 # End def.
 
 
-def plot_amp_phs_v_data(df, pearson_corr, spearman_corr, title, filename, isPhase=False):
+def lineplot(df, pearson_corr, spearman_corr, title, filename, isPhase=False):
     # Customize style.
     sns.set_style("whitegrid")  # Soft grid.
     data_labels = ['MC', 'IMF', 'SWS', 'SNo.', 'F10.7']
@@ -317,12 +322,12 @@ def plot_amp_phs_v_data(df, pearson_corr, spearman_corr, title, filename, isPhas
     plt.xticks(rotation=45, ha='right', fontsize=15)
     plt.yticks(fontsize=15)
     if isPhase:
-        plt.ylabel('Peak Hour (CT)', fontsize=15)
+        plt.ylabel('Peak Hour (UTC)', fontsize=15)
         plt.ylim(bottom=0, top=24)
     plt.title(f"{title}", fontsize=20)
     plt.tight_layout()
     # plt.subplots_adjust(right=0.75)
-    plt.savefig(f'{visuals_path}/{filename}.png', bbox_inches='tight')
+    plt.savefig(filename, bbox_inches='tight')
 
     #plt.show()
     plt.close()
@@ -331,7 +336,7 @@ def plot_amp_phs_v_data(df, pearson_corr, spearman_corr, title, filename, isPhas
 
 def scatterplot(x_series, y_series, x_label, y_label, title, filename, isPhase=False):
     plt.figure(figsize=(10, 6))
-    plt.scatter(x_series, y_series, marker='D', alpha=0.6)
+    plt.scatter(x_series, y_series, marker='D')#, alpha=0.6)
     plt.title(title, fontsize=20)
     plt.ylabel(y_label, fontsize=15)
     if isPhase:
@@ -354,7 +359,7 @@ if do_scatterplots:
                     f"Correlation of Muon Count Amplitude and {titles[ind+1]}",
                     f'{visuals_path}/amplitude_vs_{col}.png')
         # Plot MC phase vs variable.
-        scatterplot(daily_df[col], phases_df['Count'], f'{x_axes[ind]}', f'MC Peak Hour (CT)',
+        scatterplot(daily_df[col], phases_df['Count'], f'{x_axes[ind]}', f'MC Peak Hour (UTC)',
                     f"Correlation of Muon Count Phase and {titles[ind+1]}",
                     f'{visuals_path}/phase_vs_{col}.png', isPhase=True)
     # End for.
@@ -369,7 +374,7 @@ if do_scatterplots:
                     f'{visuals_path}/mc_amp_vs_{col}_amp.png')
         # Plot MC phase vs variable phase.
         scatterplot(phases_df[col], phases_df['Count'],
-                    f'{hourly_col_names[ind+1]} Peak Hour (CT)', f'MC Peak Hour (CT)',
+                    f'{hourly_col_names[ind+1]} Peak Hour (UTC)', f'MC Peak Hour (UTC)',
                     f"Correlation of Muon Count Phase and {titles[ind+1]} Phase",
                     f'{visuals_path}/mc_phase_vs_{col}_phase.png', isPhase=True)
     # End for.
@@ -378,15 +383,15 @@ if do_scatterplots:
 
 if do_lineplots:
     # Plot all daily data (column for each variable), list corrs as data labels.
-    plot_amp_phs_v_data(daily_df, all_daily_pearson_corr, all_daily_spearman_corr,
-                        'Daily Muon and Solar Weather Data (Normalized to [0,1])',
-                        'daily_data_correlations_plot')
-    plot_amp_phs_v_data(amplitudes_df, amplitudes_pearson_corr, amplitudes_spearman_corr,
-                        'Daily Muon and Solar Weather Amplitudes (Normalized to [0,1])',
-                        'daily_amplitude_correlations_plot')
-    plot_amp_phs_v_data(phases_df, phases_pearson_corr, phases_spearman_corr,
-                        'Daily Muon and Solar Weather Phases (Normalized to [0,1])',
-                        'daily_phases_correlations_plot', isPhase=True)
+    lineplot(daily_df, all_daily_pearson_corr, all_daily_spearman_corr,
+            'Daily Muon and Solar Weather Data (Normalized to [0,1])',
+            f'{visuals_path}/daily_data_correlations_plot.png')
+    lineplot(amplitudes_df, amplitudes_pearson_corr, amplitudes_spearman_corr,
+             'Daily Muon and Solar Weather Amplitudes (Normalized to [0,1])',
+             f'{visuals_path}/daily_amplitude_correlations_plot.png')
+    lineplot(phases_df, phases_pearson_corr, phases_spearman_corr,
+             'Daily Muon and Solar Weather Phases',
+             f'{visuals_path}/daily_phases_correlations_plot.png', isPhase=True)
 # End if.
 
 
