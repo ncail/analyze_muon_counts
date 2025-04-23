@@ -135,132 +135,143 @@ def test():
 # Frequency for 24-hour component.
 w = 2 * np.pi / 24  # 24-hour frequency.
 
-amplitudes_df = pd.DataFrame()
-phases_df = pd.DataFrame()
+# amplitudes_df = pd.DataFrame()
+# phases_df = pd.DataFrame()
 
 titles = ['Muon Count', 'Interplanetary Magnetic Field', 'Solar Wind Speed', 'R Sunspot Number', 'Solar Index F10.7']
-y_axes = ['Counts per hour', 'Hourly-averaged IMF (nT)', 'Hourly-averaged SWS (km/s)']
+y_axes = ['Counts (per hour)', 'Hourly-averaged IMF (nT)', 'Hourly-averaged SWS (km/s)']
 
-col_num = 0
-for col_num, col in enumerate(hourly_df.columns[:3]):
-    results = []
-    for lLoop in range(0, len(hourly_df), 24):
-        if lLoop + 24 > len(hourly_df):
-            break
+# col_num = 0
+# for col_num, col in enumerate(hourly_df.columns[:3]):
+results = []
+for lLoop in range(0, len(hourly_df), 24):
+    if lLoop + 24 > len(hourly_df):
+        break
 
-        ''' ******************************************** COMPUTE FIT ********************************************** '''
-        segment = hourly_df.iloc[lLoop:lLoop+24]
-        t = np.arange(24)
-        data = segment[col].values
+    ''' ******************************************** COMPUTE FIT ********************************************** '''
+    segment = hourly_df.iloc[lLoop:lLoop+24]
+    t = np.arange(24)
+    # data = segment[col].values
+    data = segment['Count'].values
 
-        if np.isnan(data).any():
-            results.append([hourly_df.index[lLoop], np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
-            continue
+    if np.isnan(data).any():
+        results.append([hourly_df.index[lLoop], np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+        continue
 
-        # Least squares solving for coefficients. These will allow us to extract the amplitude and phase later.
-        X = np.column_stack([
-            np.cos(w * t),
-            np.sin(w * t),
-            np.ones_like(t)  # Offset term.
-        ])
+    # Least squares solving for coefficients. These will allow us to extract the amplitude and phase later.
+    X = np.column_stack([
+        np.cos(w * t),
+        np.sin(w * t),
+        np.ones_like(t)  # Offset term.
+    ])
 
-        # Solve least squares.
-        coeffs, _, _, _ = np.linalg.lstsq(X, data, rcond=None)
-        a0, b0, A = coeffs  # Extract coefficients.
+    # Solve least squares.
+    coeffs, _, _, _ = np.linalg.lstsq(X, data, rcond=None)
+    a0, b0, A = coeffs  # Extract coefficients.
 
-        # Compute amplitude and phase for the 24-hour component.
-        B = np.sqrt(a0**2 + b0**2)
-        phi = np.arctan2(-b0, a0)
-        if phi < 0:
-            phi += 2 * np.pi  # Shift to 0-2pi range since -pi to pi range is returned.
+    # Compute amplitude and phase for the 24-hour component.
+    B = np.sqrt(a0**2 + b0**2)
+    phi = np.arctan2(-b0, a0)
+    if phi < 0:
+        phi += 2 * np.pi  # Shift to 0-2pi range since -pi to pi range is returned.
 
-        # Compute the fit.
-        y_fit = A + B * np.cos(w * t + phi)
+    # Compute the fit.
+    y_fit = A + B * np.cos(w * t + phi)
 
-        # Calculate the sum of squared differences (quality of fit).
-        ss_res = np.sum((data - y_fit) ** 2)
-        ss_tot = np.sum((data - np.mean(data)) ** 2)
-        r2 = 1 - (ss_res / ss_tot)  # R-squared for goodness of fit.
+    # Calculate the sum of squared differences (quality of fit).
+    ss_res = np.sum((data - y_fit) ** 2)
+    ss_tot = np.sum((data - np.mean(data)) ** 2)
+    r2 = 1 - (ss_res / ss_tot)  # R-squared for goodness of fit.
 
-        # Convert phase to local time. Hours are in UTC.
-        phi_hours = (phi % (2 * np.pi)) * (24 / (2 * np.pi))
-        peak_hour = 24 - phi_hours
+    # Convert phase to local time. Hours are in UTC.
+    phi_hours = (phi % (2 * np.pi)) * (24 / (2 * np.pi))
+    peak_hour = 24 - phi_hours
 
-        # Save results.
-        results.append([hourly_df.index[lLoop], A, B, phi, phi_hours, peak_hour, r2])
+    # Save results.
+    results.append([hourly_df.index[lLoop], A, B, phi, phi_hours, peak_hour, r2])
 
-        ''' ********************************************* PLOT FIT *********************************************** '''
-        if save_harmonic_plots:
-            # Plot raw and harmonic fit, and save figure.
-            time_range = hourly_df.index[lLoop:lLoop + 24].strftime('%m/%d/%Y %H:00')
-            plt.figure(figsize=(10, 6))
-            plt.scatter(t, data, label='Data')
-            plt.plot(t, y_fit, label='Harmonic fit', color='g')
-            plt.title(f"{titles[col_num]} 24-hr Harmonic Fit")
-            plt.ylabel(y_axes[col_num])
-            plt.axvline(x=peak_hour, color='m', linestyle='--', label=f'Peak hour (UTC): {peak_hour:.1f}')
-            plt.xticks(t, time_range, rotation=45, ha='right')
-            plt.legend()
-            plt.grid(True, alpha=0.75)
-            plt.tight_layout()
-            plt.savefig(f'{visuals_path}/{col}_harmonic_fit_plot_{lLoop // 24}.png', bbox_inches='tight')
-            # plt.show()
-            plt.close()
-    # End current day.
+    ''' ********************************************* PLOT FIT *********************************************** '''
+    if save_harmonic_plots:
+        # Plot raw and harmonic fit, and save figure.
+        time_range = hourly_df.index[lLoop:lLoop + 24].strftime('%m/%d/%Y %H:00')
+        plt.figure(figsize=(10, 6))
+        plt.scatter(t, data, label='Data')
+        plt.plot(t, y_fit, label='Harmonic fit', color='g')
+        # plt.title(f"{titles[col_num]} 24-hr Harmonic Fit")
+        # plt.ylabel(y_axes[col_num])
+        plt.title(f"Muon Count 24-hr Harmonic Fit")
+        plt.ylabel(y_axes[0])
+        plt.axvline(x=peak_hour, color='m', linestyle='--', label=f'Peak hour (UTC): {peak_hour:.1f}')
+        plt.xticks(t, time_range, rotation=45, ha='right')
+        plt.legend()
+        plt.grid(True, alpha=0.75)
+        plt.tight_layout()
+        # plt.savefig(f'{visuals_path}/{col}_harmonic_fit_plot_{lLoop // 24}.png', bbox_inches='tight')
+        plt.savefig(f'{visuals_path}/harmonic_fit_plot_{lLoop // 24}.png', bbox_inches='tight')
+        # plt.show()
+        plt.close()
+# End current day.
 
-    ''' ********************************************* WRITE RESULTS *********************************************** '''
-    # Convert to dataframe and write results to csv.
-    df_results = pd.DataFrame(results, columns=["Day", "Offset", "Amplitude", "Phase (rad)", "Phase (hours)",
-                                                "Peak hour", "R2"])
+''' ********************************************* WRITE RESULTS *********************************************** '''
+# Convert to dataframe and write results to csv.
+harmonic_results_df = pd.DataFrame(results, columns=["Day", "Offset", "Amplitude", "Phase (rad)", "Phase (hours)",
+                                            "Peak hour", "R2"])
 
-    # Save to csv.
-    df_results.to_csv(f'{output_path}/{col}_harmonic_components_per_day.csv', index=False)
+# Save to csv.
+# df_results.to_csv(f'{output_path}/{col}_harmonic_components_per_day.csv', index=False)
+daily_corr_df = daily_df.copy()
+daily_corr_df['Count_amplitude'] = harmonic_results_df['Amplitude']
+daily_corr_df['Count_peak_hour'] = harmonic_results_df['Peak hour']
+daily_corr_df['Count_r2'] = harmonic_results_df['R2']
+daily_corr_df.to_csv("daily_data_with_harmonic_results.csv", index=True)
 
-    # Add amplitudes and phases for current dataset to dataframe.
-    amplitudes_df[col] = df_results['Amplitude']
-    phases_df[col] = df_results['Peak hour']
-# End all cols.
+# Drop R2 column for correlational analysis.
+daily_corr_df.drop(columns=['Count_r2'], inplace=True)
+
+# Add amplitudes and phases for current dataset to dataframe.
+# amplitudes_df[col] = df_results['Amplitude']
+# phases_df[col] = df_results['Peak hour']
 
 # Save amplitudes and phases to csv.
-amplitudes_df.index = daily_df.index
-phases_df.index = daily_df.index
-amplitudes_df.to_csv(f'{output_path}/amplitudes_per_day.csv', index=True)
-phases_df.to_csv(f'{output_path}/phases_per_day.csv', index=True)
+# amplitudes_df.index = daily_df.index
+# phases_df.index = daily_df.index
+# amplitudes_df.to_csv(f'{output_path}/amplitudes_per_day.csv', index=True)
+# phases_df.to_csv(f'{output_path}/phases_per_day.csv', index=True)
 
 ''' ********************************************* CORRELATION CALCS *********************************************** '''
 if do_one_day_shift:
-    count_col = daily_df['Count'].copy()
-    daily_df = daily_df.shift(-1)
-    daily_df['Count'] = count_col
+    count_col = daily_corr_df['Count'].copy()
+    daily_corr_df = daily_corr_df.shift(-1)
+    daily_corr_df['Count'] = count_col
 
-    count_amps = amplitudes_df['Count'].copy()
-    amplitudes_df = amplitudes_df.shift(-1)
-    amplitudes_df['Count'] = count_amps
+    # count_amps = amplitudes_df['Count'].copy()
+    # amplitudes_df = amplitudes_df.shift(-1)
+    # amplitudes_df['Count'] = count_amps
 
-    count_phases = phases_df['Count'].copy()
-    phases_df = phases_df.shift(-1)
-    phases_df['Count'] = count_phases
+    # count_phases = phases_df['Count'].copy()
+    # phases_df = phases_df.shift(-1)
+    # phases_df['Count'] = count_phases
 # End if.
 
 # Correlations.
 # Do pearson and spearman correlation on daily data.
-all_daily_pearson_corr = daily_df.corr(method='pearson')
-all_daily_spearman_corr = daily_df.corr(method='spearman')
+all_daily_pearson_corr = daily_corr_df.corr(method='pearson')
+all_daily_spearman_corr = daily_corr_df.corr(method='spearman')
 
 # Do pearson and spearman correlation on amplitude and phase data.
-amplitudes_pearson_corr = amplitudes_df.corr(method='pearson')
-amplitudes_spearman_corr = amplitudes_df.corr(method='spearman')
+# amplitudes_pearson_corr = amplitudes_df.corr(method='pearson')
+# amplitudes_spearman_corr = amplitudes_df.corr(method='spearman')
 
-phases_pearson_corr = phases_df.corr(method='pearson')
-phases_spearman_corr = phases_df.corr(method='spearman')
+# phases_pearson_corr = phases_df.corr(method='pearson')
+# phases_spearman_corr = phases_df.corr(method='spearman')
 
 if write_corrs:
-    all_daily_pearson_corr.to_csv(f'{output_path}/raw_daily_pearson_corr_matrix.csv')
-    all_daily_spearman_corr.to_csv(f'{output_path}/raw_daily_spearman_corr_matrix.csv')
-    amplitudes_pearson_corr.to_csv(f'{output_path}/amplitudes_pearson_corr_matrix.csv')
-    amplitudes_spearman_corr.to_csv(f'{output_path}/amplitudes_spearman_corr_matrix.csv')
-    phases_pearson_corr.to_csv(f'{output_path}/phases_pearson_corr_matrix.csv')
-    phases_spearman_corr.to_csv(f'{output_path}/phases_spearman_corr_matrix.csv')
+    all_daily_pearson_corr.to_csv(f'{output_path}/daily_pearson_corr_matrix.csv')
+    all_daily_spearman_corr.to_csv(f'{output_path}/daily_spearman_corr_matrix.csv')
+    # amplitudes_pearson_corr.to_csv(f'{output_path}/amplitudes_pearson_corr_matrix.csv')
+    # amplitudes_spearman_corr.to_csv(f'{output_path}/amplitudes_spearman_corr_matrix.csv')
+    # phases_pearson_corr.to_csv(f'{output_path}/phases_pearson_corr_matrix.csv')
+    # phases_spearman_corr.to_csv(f'{output_path}/phases_spearman_corr_matrix.csv')
 
 
 ''' ************************************************ VISUALIZATION ************************************************* '''
@@ -355,28 +366,34 @@ if do_scatterplots:
     # Iterate over daily averaged data.
     for ind, col in enumerate(daily_df.columns[1:]):
         # Plot MC amplitude vs variable.
-        scatterplot(daily_df[col], amplitudes_df['Count'], f'{x_axes[ind]}', f'MC Amplitude',
-                    f"Correlation of Muon Count Amplitude and {titles[ind+1]}",
+        # scatterplot(daily_df[col], amplitudes_df['Count'], f'{x_axes[ind]}', f'MC Amplitude',
+        #             f"Correlation of Muon Count Amplitude and {titles[ind+1]}",
+        #             f'{visuals_path}/amplitude_vs_{col}.png')
+        scatterplot(daily_df[col], daily_corr_df['Count_amplitude'], f'{x_axes[ind]}', f'MC Amplitude',
+                    f"Correlation of Muon Count Amplitude and {titles[ind + 1]}",
                     f'{visuals_path}/amplitude_vs_{col}.png')
         # Plot MC phase vs variable.
-        scatterplot(daily_df[col], phases_df['Count'], f'{x_axes[ind]}', f'MC Peak Hour (UTC)',
-                    f"Correlation of Muon Count Phase and {titles[ind+1]}",
+        # scatterplot(daily_df[col], phases_df['Count'], f'{x_axes[ind]}', f'MC Peak Hour (UTC)',
+        #             f"Correlation of Muon Count Phase and {titles[ind+1]}",
+        #             f'{visuals_path}/phase_vs_{col}.png', isPhase=True)
+        scatterplot(daily_df[col], daily_corr_df['Count_peak_hour'], f'{x_axes[ind]}', f'MC Peak Hour (UTC)',
+                    f"Correlation of Muon Count Phase and {titles[ind + 1]}",
                     f'{visuals_path}/phase_vs_{col}.png', isPhase=True)
     # End for.
 
     # Scatterplot amps vs var amps, and phase vs var phase.
     # Iterate over harmonic component data.
-    for ind, col in enumerate(hourly_df.columns[1:3]):
-        # Plot MC amplitude vs variable amplitude.
-        scatterplot(amplitudes_df[col], amplitudes_df['Count'],
-                    f'{hourly_col_names[ind+1]} Amplitude', f'MC Amplitude',
-                    f"Correlation of Muon Count Amplitude and {titles[ind+1]} Amplitude",
-                    f'{visuals_path}/mc_amp_vs_{col}_amp.png')
-        # Plot MC phase vs variable phase.
-        scatterplot(phases_df[col], phases_df['Count'],
-                    f'{hourly_col_names[ind+1]} Peak Hour (UTC)', f'MC Peak Hour (UTC)',
-                    f"Correlation of Muon Count Phase and {titles[ind+1]} Phase",
-                    f'{visuals_path}/mc_phase_vs_{col}_phase.png', isPhase=True)
+    # for ind, col in enumerate(hourly_df.columns[1:3]):
+    #     # Plot MC amplitude vs variable amplitude.
+    #     scatterplot(amplitudes_df[col], amplitudes_df['Count'],
+    #                 f'{hourly_col_names[ind+1]} Amplitude', f'MC Amplitude',
+    #                 f"Correlation of Muon Count Amplitude and {titles[ind+1]} Amplitude",
+    #                 f'{visuals_path}/mc_amp_vs_{col}_amp.png')
+    #     # Plot MC phase vs variable phase.
+    #     scatterplot(phases_df[col], phases_df['Count'],
+    #                 f'{hourly_col_names[ind+1]} Peak Hour (UTC)', f'MC Peak Hour (UTC)',
+    #                 f"Correlation of Muon Count Phase and {titles[ind+1]} Phase",
+    #                 f'{visuals_path}/mc_phase_vs_{col}_phase.png', isPhase=True)
     # End for.
 # End if.
 
@@ -386,12 +403,12 @@ if do_lineplots:
     lineplot(daily_df, all_daily_pearson_corr, all_daily_spearman_corr,
             'Daily Muon and Solar Weather Data (Normalized to [0,1])',
             f'{visuals_path}/daily_data_correlations_plot.png')
-    lineplot(amplitudes_df, amplitudes_pearson_corr, amplitudes_spearman_corr,
-             'Daily Muon and Solar Weather Amplitudes (Normalized to [0,1])',
-             f'{visuals_path}/daily_amplitude_correlations_plot.png')
-    lineplot(phases_df, phases_pearson_corr, phases_spearman_corr,
-             'Daily Muon and Solar Weather Phases',
-             f'{visuals_path}/daily_phases_correlations_plot.png', isPhase=True)
+    # lineplot(amplitudes_df, amplitudes_pearson_corr, amplitudes_spearman_corr,
+    #          'Daily Muon and Solar Weather Amplitudes (Normalized to [0,1])',
+    #          f'{visuals_path}/daily_amplitude_correlations_plot.png')
+    # lineplot(phases_df, phases_pearson_corr, phases_spearman_corr,
+    #          'Daily Muon and Solar Weather Phases',
+    #          f'{visuals_path}/daily_phases_correlations_plot.png', isPhase=True)
 # End if.
 
 
@@ -401,28 +418,28 @@ if do_heatmaps:
     all_daily_spearman_corr.columns = daily_col_names
     all_daily_pearson_corr.index = daily_col_names
     all_daily_spearman_corr.index = daily_col_names
-    amplitudes_pearson_corr.columns = hourly_col_names
-    amplitudes_spearman_corr.columns = hourly_col_names
-    amplitudes_pearson_corr.index = hourly_col_names
-    amplitudes_spearman_corr.index = hourly_col_names
-    phases_pearson_corr.columns = hourly_col_names
-    phases_spearman_corr.columns = hourly_col_names
-    phases_pearson_corr.index = hourly_col_names
-    phases_spearman_corr.index = hourly_col_names
+    # amplitudes_pearson_corr.columns = hourly_col_names
+    # amplitudes_spearman_corr.columns = hourly_col_names
+    # amplitudes_pearson_corr.index = hourly_col_names
+    # amplitudes_spearman_corr.index = hourly_col_names
+    # phases_pearson_corr.columns = hourly_col_names
+    # phases_spearman_corr.columns = hourly_col_names
+    # phases_pearson_corr.index = hourly_col_names
+    # phases_spearman_corr.index = hourly_col_names
 
     # Heat map for correlation matrices.
-    corrs = [all_daily_pearson_corr, all_daily_spearman_corr,
-             amplitudes_pearson_corr, amplitudes_spearman_corr,
-             phases_pearson_corr, phases_spearman_corr]
+    corrs = [all_daily_pearson_corr, all_daily_spearman_corr]
+# amplitudes_pearson_corr, amplitudes_spearman_corr,
+# phases_pearson_corr, phases_spearman_corr
     corr_titles = ['Muon Count and Solar Weather: Pearson Correlation',
-                   'Muon Count and Solar Weather: Spearman Correlation',
-                   'Harmonic Fit Amplitudes: Pearson Correlation',
-                   'Harmonic Fit Amplitudes: Spearman Correlation',
-                   'Harmonic Fit Phases: Pearson Correlation',
-                   'Harmonic Fit Phases: Spearman Correlation']
-    filenames = ['heatmap_raw_daily_pearson_corr_matrix', 'heatmap_raw_daily_spearman_corr_matrix',
-                 'heatmap_amplitudes_pearson_corr_matrix', 'heatmap_amplitudes_spearman_corr_matrix',
-                 'heatmap_phases_pearson_corr_matrix', 'heatmap_phases_spearman_corr_matrix']
+                   'Muon Count and Solar Weather: Spearman Correlation']
+# 'Harmonic Fit Amplitudes: Pearson Correlation',
+# 'Harmonic Fit Amplitudes: Spearman Correlation',
+# 'Harmonic Fit Phases: Pearson Correlation',
+# 'Harmonic Fit Phases: Spearman Correlation'
+    filenames = ['heatmap_daily_pearson_corr_matrix', 'heatmap_daily_spearman_corr_matrix']
+# 'heatmap_amplitudes_pearson_corr_matrix', 'heatmap_amplitudes_spearman_corr_matrix',
+# 'heatmap_phases_pearson_corr_matrix', 'heatmap_phases_spearman_corr_matrix'
     for lLoop in range(len(corrs)):
         heat_map(corrs[lLoop], corr_titles[lLoop], filenames[lLoop])
 # End if.
