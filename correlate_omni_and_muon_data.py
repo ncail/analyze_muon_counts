@@ -219,14 +219,19 @@ harmonic_results_df = pd.DataFrame(results, columns=["Day", "Offset", "Amplitude
 
 # Save to csv.
 # df_results.to_csv(f'{output_path}/{col}_harmonic_components_per_day.csv', index=False)
-daily_corr_df = daily_df.copy()
+daily_corr_df = daily_df.copy()  # Check if datetime is index.
 daily_corr_df['Count_amplitude'] = harmonic_results_df['Amplitude']
 daily_corr_df['Count_peak_hour'] = harmonic_results_df['Peak hour']
 daily_corr_df['Count_r2'] = harmonic_results_df['R2']
+
+# Add sine and cosine of phase radians to df so circular average can be done in Excel.
+daily_corr_df['sine'] = np.sin(harmonic_results_df['Phase (rad)'])
+daily_corr_df['cosine'] = np.cos(harmonic_results_df['Phase (rad)'])
+
 daily_corr_df.to_csv("daily_data_with_harmonic_results.csv", index=True)
 
-# Drop R2 column for correlational analysis.
-daily_corr_df.drop(columns=['Count_r2'], inplace=True)
+# Drop columns that should not be included in correlation heat map for correlational analysis.
+daily_corr_df.drop(columns=['Count_r2', 'Count_peak_hour', 'sine', 'cosine'], inplace=True)
 
 # Add amplitudes and phases for current dataset to dataframe.
 # amplitudes_df[col] = df_results['Amplitude']
@@ -261,9 +266,28 @@ all_daily_spearman_corr = daily_corr_df.corr(method='spearman')
 # Do pearson and spearman correlation on amplitude and phase data.
 # amplitudes_pearson_corr = amplitudes_df.corr(method='pearson')
 # amplitudes_spearman_corr = amplitudes_df.corr(method='spearman')
+# Get amp v variables df.
+amp_v_variables_df = daily_corr_df.copy()
+# amp_v_variables_df.drop(columns=['Count', 'Count_peak_hour'])
+reorder_cols = ['Count_amplitude'] + daily_df.columns[1:]
+amp_v_variables_df = amp_v_variables_df[reorder_cols]
+amp_v_vars_pearson_corr = amp_v_variables_df.corr(method='pearson')
+amp_v_vars_spearman_corr = amp_v_variables_df.corr(method='spearman')
 
 # phases_pearson_corr = phases_df.corr(method='pearson')
 # phases_spearman_corr = phases_df.corr(method='spearman')
+# Do circular correlation for analyzing phase correlation.
+phase_v_variables_df = daily_corr_df.copy()
+phase_v_variables_df['phase_rad'] = harmonic_results_df['Phase (rad)']
+reorder_cols = ['phase_rad'] + daily_df.columns[1:]
+phase_v_variables_df = phase_v_variables_df[reorder_cols]
+
+# Test.
+import pycircstat  # Mardia's method for circular-linear correlation.
+phase_corr = {}
+for col in phase_v_variables_df.columns[1:]:
+    phase_corr[col] = pycircstat.corrcl(phase_v_variables_df['phase_rad'], phase_v_variables_df[col])
+
 
 if write_corrs:
     all_daily_pearson_corr.to_csv(f'{output_path}/daily_pearson_corr_matrix.csv')
@@ -292,10 +316,9 @@ def heat_map(corr_matrix, title, filename):
 # End def.
 
 
-def lineplot(df, pearson_corr, spearman_corr, title, filename, isPhase=False):
+def lineplot(df, pearson_corr, spearman_corr, data_labels, title, filename):  #, isPhase=False):
     # Customize style.
     sns.set_style("whitegrid")  # Soft grid.
-    data_labels = ['MC', 'IMF', 'SWS', 'SNo.', 'F10.7']
     colors = [mcolors.CSS4_COLORS['royalblue'], mcolors.CSS4_COLORS['darkorchid'], mcolors.CSS4_COLORS['yellowgreen'],
               mcolors.CSS4_COLORS['darkorange'], mcolors.CSS4_COLORS['darkturquoise']]
     # colors = sns.color_palette('bright', n_colors=5)
@@ -306,23 +329,21 @@ def lineplot(df, pearson_corr, spearman_corr, title, filename, isPhase=False):
     plt.figure(figsize=(10, 6))
     for ind, col in enumerate(df.columns):
         # Get normalized data [0,1].
-        if isPhase:
-            normalized = df[col]
-        else:
-            normalized = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+        # if isPhase:
+        #     normalized = df[col]
+        # else:
+        normalized = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
 
         # Plot and also get legend entries.
         if ind > 0:
             plt.plot(df.index, normalized, color=colors[ind], #alpha=0.75, #marker=markers[ind],
                      linestyle=linestyles[ind])
-
             legend_entries.append(f"{data_labels[ind]}\n"
-                                  f"P = {pearson_corr.loc['Count', col]:.2f} "
-                                  f"S = {spearman_corr.loc['Count', col]:.2f}")
+                                  f"P = {pearson_corr.loc[0, col]:.2f} "
+                                  f"S = {spearman_corr.loc[0, col]:.2f}")
         else:
             plt.plot(df.index, normalized, color=colors[ind], lw=2.5, #marker=markers[ind],
                      linestyle=linestyles[ind])
-
             legend_entries.append(f'{data_labels[ind]}')
     # End for.
     # plt.show()
@@ -332,9 +353,9 @@ def lineplot(df, pearson_corr, spearman_corr, title, filename, isPhase=False):
                frameon=True, fontsize=15)
     plt.xticks(rotation=45, ha='right', fontsize=15)
     plt.yticks(fontsize=15)
-    if isPhase:
-        plt.ylabel('Peak Hour (UTC)', fontsize=15)
-        plt.ylim(bottom=0, top=24)
+    # if isPhase:
+    #     plt.ylabel('Peak Hour (UTC)', fontsize=15)
+    #     plt.ylim(bottom=0, top=24)
     plt.title(f"{title}", fontsize=20)
     plt.tight_layout()
     # plt.subplots_adjust(right=0.75)
@@ -400,9 +421,14 @@ if do_scatterplots:
 
 if do_lineplots:
     # Plot all daily data (column for each variable), list corrs as data labels.
-    lineplot(daily_df, all_daily_pearson_corr, all_daily_spearman_corr,
-            'Daily Muon and Solar Weather Data (Normalized to [0,1])',
-            f'{visuals_path}/daily_data_correlations_plot.png')
+    data_labels = ['MC', 'IMF', 'SWS', 'SNo.', 'F10.7']
+    amp_data_labels = ['MC Amp', 'IMF', 'SWS', 'SNo.', 'F10.7']
+    lineplot(daily_df, all_daily_pearson_corr, all_daily_spearman_corr, data_labels,
+             'Daily Muon and Solar Weather Data (Normalized to [0,1])',
+             f'{visuals_path}/daily_data_correlations_plot.png')
+    lineplot(amp_v_variables_df, amp_v_vars_pearson_corr, amp_v_vars_spearman_corr, amp_data_labels,
+             'Muon Count Amplitudes vs Solar Weather (Normalized to [0,1])',
+             f'{visuals_path}/daily_amplitude_correlations_plot.png')
     # lineplot(amplitudes_df, amplitudes_pearson_corr, amplitudes_spearman_corr,
     #          'Daily Muon and Solar Weather Amplitudes (Normalized to [0,1])',
     #          f'{visuals_path}/daily_amplitude_correlations_plot.png')
