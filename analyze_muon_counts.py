@@ -267,7 +267,7 @@ if mode == 3:
     if x_limits:
         plt.xlim(left=x_limits[0], right=x_limits[1])
 
-    plt.title('Time-varying Muon Count Rate', fontsize=20)
+    plt.title(f'Time-varying Muon Count Rate (window={window})', fontsize=20)
     plt.xticks(rotation=45, ha='right', fontsize=15)
     plt.ylabel(data_label, fontsize=15)
     plt.legend(fontsize=15)
