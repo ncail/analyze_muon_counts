@@ -14,7 +14,7 @@ import seaborn as sns
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet,
 # 3 - rolling rate, 4 - histogram.
-mode = 2
+mode = 3
 
 # Get input and output paths.
 data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
@@ -25,7 +25,7 @@ mode_2_freq = True
 
 # x-axis limits for rolling rate mode (zoom in on a region corresponding to a hotspot on the wavelet transform
 # spectrogram).
-x_limits = 0  # [datetime(YYYY, MM, DD), datetime(YYYY, MM, DD)]
+x_limits = 0  # [datetime(2025, 2, 27), datetime(2025, 3, 22)]
 
 # Text for labelling the axes of figures.
 data_label = 'Counts (per hour)'
@@ -43,7 +43,7 @@ wavelet = 'cmor1.5-1.0'
 fft_lines = [2]
 
 # Window (number of points) for mode 3 rolling average.
-window = 12*7
+window = 12*3
 
 
 # Returns endpoints on a log progression. For the widths of the wavelet transform.
@@ -256,21 +256,28 @@ if mode == 2:
 
 # Plot rolling rate.
 if mode == 3:
+    # Use detrended counts since derivative plotting will be centered on zero.
+    df[count_col] = event_counts_detrended
+
     df['lambda_est'] = df[count_col].rolling(window=window, center=True, min_periods=1).mean()
     df['lambda_derivative'] = df['lambda_est'].diff()
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df[timestamp_col], df[count_col], label=data_label, alpha=0.4)
-    plt.plot(df[timestamp_col], df['lambda_est'], label='Expected rate λ(t)', color='red')
-    plt.plot(df[timestamp_col], df['lambda_derivative'], label='dλ/dt', color='green')
+    # twin axes for counts, rate; derivative.
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    ax2 = ax1.twinx()
+
+    ax1.scatter(df[timestamp_col], df[count_col], label=data_label, alpha=0.4)
+    ax1.plot(df[timestamp_col], df['lambda_est'], label='Expected rate λ(t)', color='red')
+    ax2.plot(df[timestamp_col], df['lambda_derivative'], label='dλ/dt', color='green', linestyle=':', alpha=0.6)
 
     if x_limits:
         plt.xlim(left=x_limits[0], right=x_limits[1])
 
     plt.title(f'Time-varying Muon Count Rate (window={window})', fontsize=20)
-    plt.xticks(rotation=45, ha='right', fontsize=15)
-    plt.ylabel(data_label, fontsize=15)
-    plt.legend(fontsize=15)
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right', fontsize=15)
+    ax1.set_ylabel(data_label, fontsize=15)
+    ax2.set_ylabel('dλ/dt', fontsize=15)
+    fig.legend(loc='upper right', bbox_to_anchor=(0.905, 0.89), fontsize=15)
 
     plt.savefig(f'{output_path}/{current_timestamp}_rolling_rate_plot_{window}_window.png', bbox_inches='tight')
 
