@@ -16,16 +16,16 @@ import seaborn as sns
 # 3 - rolling rate, 4 - histogram.
 mode = 2
 
+# Get input and output paths.
+data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
+output_path = 'results/spectral_analysis_plots'
+
 # Plot the wavelet transform in units of frequency. Else units of scale.
-mode_2_freq = False
+mode_2_freq = True
 
 # x-axis limits for rolling rate mode (zoom in on a region corresponding to a hotspot on the wavelet transform
 # spectrogram).
 x_limits = 0  # [datetime(YYYY, MM, DD), datetime(YYYY, MM, DD)]
-
-# Get input and output paths.
-data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
-output_path = 'results/spectral_analysis_plots'
 
 # Text for labelling the axes of figures.
 data_label = 'Counts (per hour)'
@@ -229,7 +229,7 @@ if mode == 2:
 
     # Plot first fft line with full label.
     if mode_2_freq:  # Plot the line in units of frequency.
-        plt.axhline(y=top5_freqs[0], color='m', linestyle='--', label=label)
+        plt.axhline(y=top5_freqs[fft_lines[0]], color='m', linestyle='--', label=label)
     else:  # Plot line in units of scale.
         plt.axhline(y=freq_in_hours[top5_indices[fft_lines[0]]], color='m', linestyle='--', label=label)
 
