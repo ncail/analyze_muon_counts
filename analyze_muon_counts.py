@@ -14,10 +14,10 @@ import seaborn as sns
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet,
 # 3 - rolling rate, 4 - histogram.
-mode = 3
+mode = 4
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
+data_filepath = 'preprocessed_data/prepared_for_correlation/data_hourly_04192025_234605_20250227-20250415_all_hours.csv'
 output_path = 'results/spectral_analysis_plots'
 
 # Plot the wavelet transform in units of frequency. Else units of scale.
@@ -40,10 +40,10 @@ low_pass_filter = 1/(6*3600)  # Cutoff frequency.
 wavelet = 'cmor1.5-1.0'
 
 # Indices of top 5 FFT frequencies to plot on wavelet spectogram. Choose from FFT results.
-fft_lines = [2]
+fft_lines = [2, 1, 4]
 
 # Window (number of points) for mode 3 rolling average.
-window = 12*3
+window = 10
 
 
 # Returns endpoints on a log progression. For the widths of the wavelet transform.
@@ -217,7 +217,7 @@ if mode == 2:
     first = True
     for ind in fft_lines:
         if first:
-            label += f'{freq_in_hours[top5_indices[ind]]:.2f}-hour period'
+            label += f'\n{freq_in_hours[top5_indices[ind]]:.2f}-hour period'
             first = False
         else:
             label += f'\n{freq_in_hours[top5_indices[ind]]:.2f}-hour period'
@@ -307,8 +307,8 @@ if mode == 4:
             IQR = Q3 - Q1
             lower_bound = Q1 - 1.5 * IQR
             upper_bound = Q3 + 1.5 * IQR
-            plt.axvline(x=lower_bound, color='r', linestyle=':')
-            plt.axvline(x=upper_bound, color='r', linestyle=':')
+            plt.axvline(x=lower_bound, color='r', linestyle=':', label=lower_bound)
+            plt.axvline(x=upper_bound, color='r', linestyle=':', label=upper_bound)
 
         plt.xlabel(x_label, fontsize=15)
         if isPhase:

@@ -22,10 +22,10 @@ from zoneinfo import ZoneInfo
 ''' ************************************************ CONFIG ************************************************ '''
 # omni_file_hourly = f'preprocessed_data/omni_data/preprocessed_omni2_8Yxgda57Vu_20250226-20250415.csv'
 omni_file_daily = f'preprocessed_data/omni_data/preprocessed_omni2_daily_gtNELIevQT_20250226-20250415.csv'
-muon_file_hourly = []#f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv',
-                    #f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250325_115858.csv']
-muon_file_daily = [f'preprocessed_data/muon_data/preprocessed_1D-intervals_20250227_132422.csv']#,
-                   #f'preprocessed_data/muon_data/preprocessed_1D-intervals_20250325_115858.csv']
+muon_file_hourly = []  # f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
+# f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250325_115858.csv'
+muon_file_daily = [f'preprocessed_data/muon_data/preprocessed_1D-intervals_20250227_132422.csv']
+# f'preprocessed_data/muon_data/preprocessed_1D-intervals_20250325_115858.csv']
 
 # Choose to only include complete days of data.
 cutoff_incomplete = True
@@ -89,7 +89,7 @@ if muon_file_hourly:
     # Merge on datetime. Keep only matching rows from omni_df.
     # hourly_df = pd.merge(muon_df_hourly, omni_df_hourly, on='datetime', how='inner')
     # hourly_df.set_index('datetime', inplace=True)
-    muon_df_hourly.set_index('datetime', inplace=True)
+    muon_df_hourly.set_index('Time_stamp', inplace=True)
 
     # Save to CSV.
     # hourly_df.to_csv(hourly_output_filename, index=True)

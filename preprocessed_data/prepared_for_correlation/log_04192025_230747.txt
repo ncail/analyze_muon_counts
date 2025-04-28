@@ -1,0 +1,7 @@
+Files used:
+	OMNI:
+		preprocessed_data/omni_data/preprocessed_omni2_8Yxgda57Vu_20250226-20250415.csv
+		preprocessed_data/omni_data/preprocessed_omni2_daily_gtNELIevQT_20250226-20250415.csv
+	Muons:
+		['preprocessed_data/muon_data/preprocessed_1H-intervals_20250325_115858.csv']
+		['preprocessed_data/muon_data/preprocessed_1D-intervals_20250325_115858.csv']

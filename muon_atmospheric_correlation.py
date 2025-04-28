@@ -1,3 +1,11 @@
+"""
+Inputs hourly muon data (assumes is in UTC).
+Extracts the UTC start and end datetime of the muon data.
+Gets temperature and pressure data from Open Meteo within the datetime range for given latitude and longitude location.
+Generates scatter plots of muon count vs temperature and pressure.
+"""
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import requests
@@ -6,6 +14,7 @@ import os
 
 
 ''' ************************************************ CONFIG ************************************************ '''
+filepath = "preprocessed_data/prepared_for_correlation/data_hourly_04192025_234605_20250227-20250415_all_hours.csv"
 current_timestamp = datetime.datetime.now().strftime('%m%d%Y_%H%M%S')
 output_path = 'results/corr_atmos'
 scatterplot_output_filename = f'{output_path}/muon_vs_temp_and_pressure_{current_timestamp}.png'
@@ -16,8 +25,7 @@ if not os.path.exists(output_path):
     os.makedirs(output_path)
 
 # Load muon data.
-muon_df = pd.read_csv("preprocessed_data/prepared_for_correlation/data_hourly_04172025_221740.csv",
-                      index_col=0, parse_dates=True)
+muon_df = pd.read_csv(filepath, index_col=0, parse_dates=True)
 muon_df = muon_df.rename_axis("datetime").reset_index()
 
 # Define location and time range.
@@ -31,7 +39,7 @@ url = (
     f"latitude={latitude}&longitude={longitude}"
     f"&start_date={start_date}&end_date={end_date}"
     "&hourly=temperature_2m,pressure_msl"
-    "&timezone=auto"
+    "&timezone=UTC"
 )
 
 response = requests.get(url)

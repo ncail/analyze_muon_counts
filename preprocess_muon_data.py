@@ -5,9 +5,9 @@ from zoneinfo import ZoneInfo
 
 ''' ************************************************ CONFIG ************************************************ '''
 data_filepath = ('C:\\data\\project_of_excellence\\muon_project_programs\\data_files\\data_from_onedrive'
-                 '/data_log_20250227_132422.csv')
-resampling_time_interval = timedelta(hours=1)
-output_path = f'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
+                 '/data_log_20250325_115858.csv') #data_log_20250325_115858
+resampling_time_interval = timedelta(seconds=5)
+output_path = f'preprocessed_data/muon_data/preprocessed_5S-intervals_20250325_115858.csv'
 
 
 ''' ********************************************* PROCESSING *********************************************** '''
