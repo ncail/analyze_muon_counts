@@ -14,10 +14,10 @@ import seaborn as sns
 ''' ***************************************** CONFIG ******************************************** '''
 # Config mode (of plotting results): 0 - raw data, 1 - fft, 2 - wavelet,
 # 3 - rolling rate, 4 - histogram.
-mode = 4
+mode = 2
 
 # Get input and output paths.
-data_filepath = 'preprocessed_data/prepared_for_correlation/data_hourly_04192025_234605_20250227-20250415_all_hours.csv'
+data_filepath = 'preprocessed_data/muon_data/preprocessed_1H-intervals_20250227_132422.csv'
 output_path = 'results/spectral_analysis_plots'
 
 # Plot the wavelet transform in units of frequency. Else units of scale.
@@ -27,8 +27,11 @@ mode_2_freq = True
 # spectrogram).
 x_limits = 0  # [datetime(2025, 2, 27), datetime(2025, 3, 22)]
 
+# For rolling rate. Show derivative.
+show_deriv = False
+
 # Text for labelling the axes of figures.
-data_label = 'Counts (per hour)'
+data_label = 'Detrended Counts (per hour)'
 
 # Config signal smoothing.
 gaussian_smoothing_sigma = 0
@@ -40,14 +43,15 @@ low_pass_filter = 1/(6*3600)  # Cutoff frequency.
 wavelet = 'cmor1.5-1.0'
 
 # Indices of top 5 FFT frequencies to plot on wavelet spectogram. Choose from FFT results.
-fft_lines = [2, 1, 4]
+fft_lines = [2]
 
 # Window (number of points) for mode 3 rolling average.
 window = 10
 
 
 # Returns endpoints on a log progression. For the widths of the wavelet transform.
-def get_scales(data):
+def get_scales():
+
     return np.geomspace(2, 72, num=100)
 
 
@@ -107,7 +111,7 @@ top5_mags = magnitudes_detrended[top5_indices]
 freq_in_hours = 1 / frequencies_per_hour
 
 # Wavelet analysis.
-scales = get_scales(event_counts_detrended)
+scales = get_scales()
 if mode == 2:
     coeffs, frequencies_wt = pywt.cwt(event_counts_detrended, scales, f'{wavelet}',
                                       sampling_period=time_interval.total_seconds())
@@ -199,13 +203,14 @@ if mode == 2:
     fig, ax = plt.subplots(figsize=(10, 6))
     if mode_2_freq:
         pcm = ax.pcolormesh(time_series, frequencies_wt, np.abs(coeffs))
-        ax.set_yscale("log")
+        # ax.set_yscale("log")
         ax.set_ylabel("Frequency (Hz)", fontsize=15)
     else:
         pcm = ax.pcolormesh(time_series, scales, np.abs(coeffs))
         plt.ylim(top=max(scales))
         ax.set_ylabel("Scales (hours)", fontsize=15)
 
+    ax.set_yscale("log")
     plt.xticks(rotation=45, ha='right', fontsize=12)
     plt.yticks(fontsize=12)
     ax.set_title("Muon Count Wavelet Transform", fontsize=25)
@@ -264,11 +269,14 @@ if mode == 3:
 
     # twin axes for counts, rate; derivative.
     fig, ax1 = plt.subplots(figsize=(10, 6))
-    ax2 = ax1.twinx()
+
+    if show_deriv:
+        ax2 = ax1.twinx()
+        ax2.plot(df[timestamp_col], df['lambda_derivative'], label='dλ/dt', color='green', linestyle=':', alpha=0.6)
+        ax2.set_ylabel('dλ/dt', fontsize=15)
 
     ax1.scatter(df[timestamp_col], df[count_col], label=data_label, alpha=0.4)
     ax1.plot(df[timestamp_col], df['lambda_est'], label='Expected rate λ(t)', color='red')
-    ax2.plot(df[timestamp_col], df['lambda_derivative'], label='dλ/dt', color='green', linestyle=':', alpha=0.6)
 
     if x_limits:
         plt.xlim(left=x_limits[0], right=x_limits[1])
@@ -276,7 +284,6 @@ if mode == 3:
     plt.title(f'Time-varying Muon Count Rate (window={window})', fontsize=20)
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right', fontsize=15)
     ax1.set_ylabel(data_label, fontsize=15)
-    ax2.set_ylabel('dλ/dt', fontsize=15)
     fig.legend(loc='upper right', bbox_to_anchor=(0.905, 0.89), fontsize=15)
 
     plt.savefig(f'{output_path}/{current_timestamp}_rolling_rate_plot_{window}_window.png', bbox_inches='tight')

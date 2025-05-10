@@ -30,6 +30,7 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from pycircstat2 import correlation  # Mardia's method for circular-linear correlation.
+from scipy.stats import pearsonr, spearmanr
 
 
 ''' ************************************************ CONFIG ************************************************ '''
@@ -39,14 +40,14 @@ daily_data_file = \
     'preprocessed_data/prepared_for_correlation/data_daily_04192025_225732_20250227-20250415_whole_days.csv'
 
 current_timestamp = datetime.datetime.now().strftime('%m%d%Y_%H%M%S')
-output_path = f'results/omni_correlation/{current_timestamp}'
+output_path = f'results/omni_correlation/{current_timestamp}_shifted'
 visuals_path = f'{output_path}/plots'
 
 save_harmonic_plots = False
-do_heatmaps = True
+do_heatmaps = False
 do_scatterplots = True
-do_lineplots = True
-write_corrs = True
+do_lineplots = False
+write_corrs = False
 do_one_day_shift = True
 
 
@@ -222,10 +223,42 @@ daily_df.to_csv(f"{output_path}/daily_data_with_harmonic_results.csv", index=Tru
 
 ''' ********************************************* CORRELATION CALCS *********************************************** '''
 
+
+def bootstrap_dfs(df, method='pearson', n_bootstraps=1000):
+    index = []
+    results = []
+    for col in df.columns[1:]:
+        index.append(col)
+        clean_data = df[[df.columns[0], col]].dropna()
+        size = len(clean_data)
+        bootstrap = bootstrap_corr(clean_data[col].to_numpy(), clean_data[df.columns[0]].to_numpy(), method, n_bootstraps)
+        results.append([size, bootstrap[0], bootstrap[1], bootstrap[2][0], bootstrap[2][1]])
+    results_df = pd.DataFrame(results, columns=['size', 'mean_r', 'r_std', 'ci_lower', 'ci_upper'], index=index)
+    return results_df
+
+
+def bootstrap_corr(x, y, method='pearson', n_bootstraps=1000):
+    rng = np.random.default_rng()
+    bootstrapped_corrs = []
+    for _ in range(n_bootstraps):
+        idx = rng.choice(len(x), len(x), replace=True)
+        if method == 'pearson':
+            r = pearsonr(x[idx], y[idx])
+            bootstrapped_corrs.append(r[0])
+        elif method == 'spearman':
+            r = spearmanr(x[idx], y[idx])
+            bootstrapped_corrs.append(r[0])
+        elif method == 'mardia':
+            r = correlation.circ_corrcl(y[idx], x[idx])  # Circular variable is y.
+            bootstrapped_corrs.append(r.r)
+        # bootstrapped_corrs.append(r[0])
+    return np.mean(bootstrapped_corrs), np.std(bootstrapped_corrs), np.percentile(bootstrapped_corrs, [2.5, 97.5])
+
+
 # Shift daily_corr_df. All references to the daily space weather data should be to dail_corr_df.
 if do_one_day_shift:
     count_col = daily_corr_df['Count'].copy()
-    daily_corr_df = daily_corr_df.shift(-1)
+    daily_corr_df = daily_corr_df.shift(1)
     daily_corr_df['Count'] = count_col
 # End if.
 
@@ -249,7 +282,6 @@ phase_v_variables_df['phase_rad'] = harmonic_results_df['Phase (rad)']
 reorder_cols = ['phase_rad'] + list(daily_corr_df.columns[1:])
 phase_v_variables_df = phase_v_variables_df[reorder_cols]
 
-# Test.
 phase_corr = {}
 for col in phase_v_variables_df.columns[1:]:
     # Drop NaN rows in this data column, dropping the same ones from phase column.
@@ -258,12 +290,24 @@ for col in phase_v_variables_df.columns[1:]:
 # End for.
 phase_corr_series = pd.Series(phase_corr)
 
+# Get correlation results from bootstrapping.
+bootstrap_daily_pearson = bootstrap_dfs(daily_corr_df, 'pearson')
+bootstrap_daily_spearman = bootstrap_dfs(daily_corr_df, 'spearman')
+bootstrap_amps_pearson = bootstrap_dfs(amp_v_variables_df, 'pearson')
+bootstrap_amps_spearman = bootstrap_dfs(amp_v_variables_df, 'spearman')
+bootstrap_phase = bootstrap_dfs(phase_v_variables_df, 'mardia')
+
 if write_corrs:
     all_daily_pearson_corr.to_csv(f'{output_path}/daily_pearson_corr_matrix.csv', index=True)
     all_daily_spearman_corr.to_csv(f'{output_path}/daily_spearman_corr_matrix.csv', index=True)
     amp_v_vars_pearson_corr.to_csv(f'{output_path}/amp_pearson_corr_matrix.csv', index=True)
     amp_v_vars_spearman_corr.to_csv(f'{output_path}/amp_spearman_corr_matrix.csv', index=True)
     phase_corr_series.to_csv(f'{output_path}/phase_circular_corr_matrix.csv', index=True)
+    bootstrap_daily_pearson.to_csv(f'{output_path}/bootstrap_daily_pearson.csv', index=True)
+    bootstrap_daily_spearman.to_csv(f'{output_path}/bootstrap_daily_spearman.csv', index=True)
+    bootstrap_amps_pearson.to_csv(f'{output_path}/bootstrap_amp_pearson.csv', index=True)
+    bootstrap_amps_spearman.to_csv(f'{output_path}/bootstrap_amp_spearman.csv', index=True)
+    bootstrap_phase.to_csv(f'{output_path}/bootstrap_phase.csv', index=True)
 
 ''' ************************************************ VISUALIZATION ************************************************* '''
 
